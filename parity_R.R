@@ -1,6 +1,11 @@
 ## R side of the JS parity harness. Thinning matches the JS exactly (see parity.mjs).
 suppressMessages(library(arcstat))
-setwd("/Users/home/Documents/Research/Arc length statistics/kappa4_regression")
+## The fitting helpers and the trace CSVs are the paper's materials, not part of this repository.
+## Point RANCIMAT_KAPPA4_DIR at the kappa4_regression directory that holds _oils_fitfuns.R.
+here <- getwd()
+base <- Sys.getenv("RANCIMAT_KAPPA4_DIR", unset = "")
+if (!nzchar(base)) stop("set RANCIMAT_KAPPA4_DIR to the kappa4_regression directory")
+setwd(base)
 source("_oils_fitfuns.R")
 q <- subset(read.csv("../kappa4_temperature/data_oils2026/trace_quality.csv"), fittable==1)
 set.seed(1); pick <- q[sort(sample(nrow(q), 14)),]
@@ -11,5 +16,5 @@ out <- do.call(rbind, lapply(seq_len(nrow(pick)), function(i){
   fit <- fit_k4w(x,y); r <- k4_readings(fit$theta)
   data.frame(file=basename(f), n=length(x), rss=fit$rss, k=fit$theta[5], h=fit$theta[6],
              a=unname(r["a"]), b=unname(r["b"]), floor=fit$h_floor) }))
-write.csv(out, "/Users/home/Documents/Research/rancimat-app/parity_R.csv", row.names=FALSE)
+write.csv(out, file.path(here, "parity_R.csv"), row.names=FALSE)
 print(out, digits=6, row.names=FALSE)

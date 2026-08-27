@@ -57,6 +57,20 @@ wall of the admissible set, shapes deep in the negative half-line, runs whose se
 not exist, the generalised extreme value member, and the shortest and longest induction periods in
 the set.
 
+## Running the checks
+
+    node _mkprobe.mjs        rebuild `_probe.mjs` from `index.html`; needed once after cloning,
+                             and again after any change to the app
+    node testsuite.mjs       fit the eight traces bundled in `selftest_cases.json` and compare
+                             against `reference_focke.json`; exits non-zero on failure
+    node testsuite.mjs FILE  the same over every reference run whose trace is in FILE, the archive
+                             CSV held with the paper's materials
+
+`parity.mjs` and `parity_R.R` are the fourteen-trace R-against-JavaScript harness. They read traces
+that are part of the paper's materials and are not distributed here, so they take the directory as
+an argument (`node parity.mjs /path/to/traces/`, and `RANCIMAT_KAPPA4_DIR` for the R side) rather
+than assuming one. Without those materials, `node testsuite.mjs` is the check that runs anywhere.
+
 ## Layout
 
     index.html            the whole tool, assembled and self-contained
@@ -65,7 +79,8 @@ the set.
     app.js ctrl.js        fitter/plot, and the controller
     build.py              assembles the above into index.html
     parity.mjs parity_R.R the 14-trace parity harness
-    testsuite.mjs         the 98-run suite
+    testsuite.mjs         the reference suite, bundled traces by default
+    _mkprobe.mjs          rebuilds the node-side probe from index.html
     selftest_cases.json   the eight traces embedded in the page
 
 ## Licence and data

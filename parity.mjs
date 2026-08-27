@@ -4,7 +4,17 @@ const R = fs.readFileSync('parity_R.csv','utf8').trim().split('\n');
 const hdr = R[0].split(',').map(s=>s.replace(/"/g,''));
 const rows = R.slice(1).map(l=>{ const p=l.split(','); const o={};
   hdr.forEach((k,i)=>o[k]=p[i].replace(/"/g,'')); return o; });
-const DIR='/Users/home/Documents/Research/Arc length statistics/kappa4_temperature/data_oils2026/';
+/* Directory holding the trace CSVs named in parity_R.csv. These are the paper's materials and are
+   not distributed with this repository, so the path must be supplied:
+       node parity.mjs /path/to/data_oils2026/     or   RANCIMAT_TRACE_DIR=/path/... node parity.mjs */
+let DIR = process.argv[2] || process.env.RANCIMAT_TRACE_DIR || '';
+if (!DIR) {
+  console.error('parity.mjs needs the trace directory: node parity.mjs /path/to/data_oils2026/');
+  console.error('Those traces are held with the paper\'s materials and are not in this repository.');
+  console.error('For a check that runs anywhere, use: node testsuite.mjs');
+  process.exit(2);
+}
+if (!DIR.endsWith('/')) DIR += '/';
 console.log('file'.padEnd(24),'  d(k)      d(h)      d(a)      d(b)     rss ratio  floor');
 let worst={k:0,h:0,a:0,b:0,rss:0};
 for (const r of rows) {
