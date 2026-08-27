@@ -1,0 +1,15 @@
+Induction Period Reader
+Copyright (c) 2026 M. Theodor Loots
+
+The MIT licence in LICENSE covers the CODE ONLY.
+
+The conductivity traces distributed with this repository, namely those embedded
+in selftest_cases.json and the trace in example_trace.txt, are from the archive
+of the Institute of Applied Materials, University of Pretoria. They are included
+with the written permission of W. W. Focke for use with this tool. They are NOT
+covered by the MIT licence and are not to be redistributed separately.
+
+The fitted reference values in reference_focke.json cover only the runs this
+repository is free to distribute. The seven Spanish-cultivar oils analysed in
+the accompanying paper are excluded: they were supplied by the A Coruna group
+for that analysis, which is not the same as permission to redistribute.

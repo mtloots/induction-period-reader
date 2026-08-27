@@ -70,9 +70,21 @@ the set.
 
 ## Licence and data
 
-The code is MIT (see `LICENSE`).
+The code is MIT (see `LICENSE`). The licence file is the MIT text and nothing else, so that it is
+detected as MIT; the restrictions on the data are stated in `NOTICE`.
 
 The conductivity traces embedded in `selftest_cases.json` and `example_trace.txt` are from the
 archive of the Institute of Applied Materials, University of Pretoria, and are included with the
 written permission of W. W. Focke. They are **not** covered by the MIT licence and are not to be
 redistributed separately.
+
+`reference_focke.json` covers only the runs this repository is free to distribute. The seven
+Spanish-cultivar oils analysed in the accompanying paper are excluded: they were supplied by the
+A Coruna group for that analysis, which is not the same as permission to redistribute. The full
+98-run reference is held with the paper's materials.
+
+## Citing this tool
+
+Metadata for citation is in `CITATION.cff`, and `.zenodo.json` supplies the same information to
+Zenodo when a release is archived. Cite the archived release rather than a website address: a
+company or personal domain outlives neither, and a dead link in a published paper is permanent.

@@ -1,0 +1,20 @@
+{
+  "title": "Induction Period Reader",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Loots, M. Theodor",
+      "orcid": "0000-0001-7722-3913"
+    }
+  ],
+  "description": "<p>A single-page browser tool that reads the induction period off a Rancimat conductivity trace by fitting the four-parameter kappa response, and reports both readings admitted by the standard, the steepest-tangent reading and the second-derivative reading, with bootstrap intervals.</p><p>The fit runs entirely in the visitor's browser; nothing is uploaded and nothing is stored.</p><p>The MIT licence covers the code only. The conductivity traces distributed with the repository are included with written permission and are not covered by it; see NOTICE.</p>",
+  "keywords": [
+    "Rancimat",
+    "induction period",
+    "oxidative stability",
+    "edible oils",
+    "four-parameter kappa distribution",
+    "curve fitting"
+  ]
+}
