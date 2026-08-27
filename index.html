@@ -1,0 +1,950 @@
+<title>Induction Period Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F6F7F4; --surface:#FFFFFF; --raised:#FBFCFA;
+  --ink:#16201F; --muted:#5C6B69; --faint:#8A9794;
+  --line:#DCE2DE; --line-strong:#C3CCC7;
+  --accent:#0E5E63; --accent-soft:#E2EEEE; --accent-ink:#0A4448;
+  --onset:#B4690E; --onset-soft:#F7ECDC;
+  --warn:#8C2F2F; --warn-soft:#F6E7E7;
+  --ok:#2F6B3F; --ok-soft:#E6F0E7;
+  --shadow:0 1px 2px rgba(22,32,31,.05), 0 8px 24px -16px rgba(22,32,31,.28);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1514; --surface:#16201F; --raised:#1B2624;
+    --ink:#E7EDEA; --muted:#9AA8A5; --faint:#75837F;
+    --line:#26332F; --line-strong:#35443F;
+    --accent:#59B9BE; --accent-soft:#122C2E; --accent-ink:#8FD6D9;
+    --onset:#E0A057; --onset-soft:#2C2317;
+    --warn:#D98A8A; --warn-soft:#2C1A1A;
+    --ok:#87C295; --ok-soft:#17251A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1514; --surface:#16201F; --raised:#1B2624;
+  --ink:#E7EDEA; --muted:#9AA8A5; --faint:#75837F;
+  --line:#26332F; --line-strong:#35443F;
+  --accent:#59B9BE; --accent-soft:#122C2E; --accent-ink:#8FD6D9;
+  --onset:#E0A057; --onset-soft:#2C2317;
+  --warn:#D98A8A; --warn-soft:#2C1A1A;
+  --ok:#87C295; --ok-soft:#17251A;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px 72px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; text-wrap:balance; margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--faint)}
+
+/* masthead */
+header.top{border-bottom:1px solid var(--line); background:var(--surface)}
+.top-in{max-width:1180px; margin:0 auto; padding:18px 24px; display:flex; align-items:baseline;
+  gap:16px; flex-wrap:wrap}
+.top h1{font-size:22px; font-weight:700; letter-spacing:-.01em}
+.top .sub{color:var(--muted); font-size:13.5px}
+.top .spacer{flex:1}
+button{font:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--line-strong);
+  background:var(--surface); color:var(--ink); padding:7px 13px; transition:background .13s,border-color .13s}
+button:hover{background:var(--raised); border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500}
+button.primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
+button[disabled]{opacity:.45; cursor:not-allowed}
+
+/* intake */
+.intake{margin-top:26px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:stretch}
+.drop{border:1.5px dashed var(--line-strong); border-radius:10px; background:var(--surface);
+  padding:22px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px;
+  transition:border-color .15s, background .15s}
+.drop.over{border-color:var(--accent); background:var(--accent-soft)}
+.drop .hint{color:var(--muted); font-size:13.5px}
+.intake .side{display:flex; flex-direction:column; gap:8px; justify-content:center}
+
+/* console */
+.console{margin-top:26px; display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr); gap:20px}
+@media (max-width:900px){ .console{grid-template-columns:1fr} .intake{grid-template-columns:1fr} }
+.card{background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow)}
+.card-h{padding:13px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px}
+.card-b{padding:18px}
+canvas{width:100%; height:auto; display:block; border-radius:6px}
+
+/* the headline figure */
+.figure{padding:20px 18px 16px}
+.figure .label{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--faint)}
+.figure .value{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:46px; line-height:1.05; font-weight:500; letter-spacing:-.02em; margin-top:6px; color:var(--accent-ink)}
+.figure .value .u{font-size:20px; color:var(--muted); margin-left:6px; letter-spacing:0}
+.figure .ci{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--muted); margin-top:5px;
+  font-variant-numeric:tabular-nums}
+.rowline{display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+  padding:11px 18px; border-top:1px solid var(--line)}
+.rowline .k{color:var(--muted); font-size:13.5px}
+.rowline .v{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:14.5px}
+.swatch{width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:7px}
+
+/* verdict chip */
+.chip{display:inline-flex; align-items:center; gap:7px; border-radius:999px; padding:5px 12px;
+  font-size:12.5px; font-weight:500; border:1px solid transparent}
+.chip.ok{background:var(--ok-soft); color:var(--ok); border-color:color-mix(in srgb,var(--ok) 28%,transparent)}
+.chip.no{background:var(--warn-soft); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 28%,transparent)}
+.chip.info{background:var(--accent-soft); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.verdict{padding:16px 18px; border-top:1px solid var(--line)}
+.verdict p{margin:9px 0 0; font-size:13.5px; color:var(--muted)}
+
+/* diagnostics */
+.diag{margin-top:20px}
+.diag table{width:100%; border-collapse:collapse; font-family:"IBM Plex Mono",monospace; font-size:13px;
+  font-variant-numeric:tabular-nums}
+.diag td,.diag th{padding:8px 10px; border-bottom:1px solid var(--line); text-align:left}
+.diag th{color:var(--faint); font-weight:500; font-size:11px; letter-spacing:.1em; text-transform:uppercase}
+.diag td.n{text-align:right}
+.scroll{overflow-x:auto}
+
+/* progress */
+.bar{height:3px; background:var(--line); border-radius:2px; overflow:hidden; margin-top:12px}
+.bar i{display:block; height:100%; background:var(--accent); width:0%; transition:width .18s}
+.status{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--muted); margin-top:8px}
+
+.note{margin-top:22px; padding:15px 18px; border-left:2px solid var(--line-strong);
+  color:var(--muted); font-size:13.5px; background:var(--raised); border-radius:0 8px 8px 0}
+.note strong{color:var(--ink); font-weight:600}
+.hidden{display:none !important}
+footer.foot{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); color:var(--faint); font-size:12.5px}
+
+@media print{
+  body{background:#fff; color:#000; font-size:11pt}
+  .noprint{display:none !important}
+  .card{box-shadow:none; border:1px solid #bbb; break-inside:avoid}
+  .console{grid-template-columns:1fr 1fr}
+  .wrap{padding:0}
+  .figure .value{font-size:30pt}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+</style>
+<header class="top">
+  <div class="top-in">
+    <h1>Induction Period Reader</h1>
+    <span class="sub">Four-parameter kappa fit to a Rancimat conductivity trace</span>
+    <span class="spacer"></span>
+    <button class="noprint" id="btnTheme" title="Switch light and dark">Theme</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="intake noprint">
+    <div class="drop" id="drop">
+      <div><strong>Drop a trace here</strong>, or choose a file</div>
+      <div class="hint">Two columns: time and conductivity. Comma, semicolon or tab separated.
+        A Metrohm export with <span class="mono">Time [s]</span> and <span class="mono">Measured value</span>
+        works as it stands &mdash; seconds are detected and converted to hours.</div>
+      <input type="file" id="file" accept=".csv,.txt,.tsv" style="margin-top:10px">
+    </div>
+    <div class="side">
+      <button id="btnExample">Load a worked example</button>
+      <button class="primary" id="btnRun" disabled>Read the trace</button>
+      <button id="btnPrint" disabled>Print report</button>
+    </div>
+  </section>
+
+  <div id="progress" class="hidden noprint">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <section class="console hidden" id="console">
+    <div class="card">
+      <div class="card-h">
+        <span class="eyebrow">Trace and fitted response</span>
+        <span class="spacer" style="flex:1"></span>
+        <span class="mono" style="font-size:12px;color:var(--faint)" id="srcName"></span>
+      </div>
+      <div class="card-b"><canvas id="plot" width="1400" height="800"></canvas></div>
+    </div>
+
+    <div class="card" id="results">
+      <div class="figure">
+        <div class="label">Induction period &mdash; tangent construction</div>
+        <div class="value mono" id="aVal">&mdash;<span class="u">h</span></div>
+        <div class="ci" id="aCI"></div>
+      </div>
+      <div class="rowline">
+        <span class="k"><span class="swatch" style="background:var(--onset)"></span>Second-derivative reading</span>
+        <span class="v" id="bVal">&mdash;</span>
+      </div>
+      <div class="rowline"><span class="k">Its interval</span><span class="v" id="bCI">&mdash;</span></div>
+      <div class="verdict">
+        <span class="eyebrow">Can the two readings agree?</span>
+        <div style="margin-top:9px"><span class="chip info" id="eqChip">not yet computed</span></div>
+        <p id="eqText"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="diag card hidden" id="diagCard">
+    <div class="card-h"><span class="eyebrow">Diagnostics</span></div>
+    <div class="card-b scroll">
+      <table>
+        <thead><tr><th>Quantity</th><th>Value</th><th>What it tells you</th></tr></thead>
+        <tbody id="diagBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="note hidden" id="caveat"></div>
+
+  <section class="card noprint" id="selftestCard" style="margin-top:22px">
+    <div class="card-h">
+      <span class="eyebrow">Self-test against the published table</span>
+      <span style="flex:1"></span>
+      <button id="btnSelfTest">Run the self-test</button>
+    </div>
+    <div class="card-b">
+      <p style="margin:0 0 12px; color:var(--muted); font-size:13.5px">
+        Eight runs from the collaborating laboratory's own archive are built into this page, chosen to span the
+        awkward cases: shapes at the wall of the admissible set, shapes deep in the negative half-line,
+        runs whose second-derivative reading does not exist, and the shortest and longest induction
+        periods in the set. The tool refits each from its raw trace and compares against the value in
+        the workbook that accompanies this link. If these agree, a disagreement on your own traces is
+        a fact about the data and not about the arithmetic.
+      </p>
+      <div class="bar hidden" id="stBar"><i id="stFill"></i></div>
+      <div class="scroll"><table id="stTable" class="hidden">
+        <thead><tr><th>Run</th><th>Published (h)</th><th>This tool (h)</th><th>Difference</th><th>2nd reading</th><th></th></tr></thead>
+        <tbody id="stBody"></tbody>
+      </table></div>
+      <div id="stSummary" class="status"></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Readings are computed from the fitted curve, never by differentiating the recorded data, so noise
+    enters through the fit where it can be accounted for. Intervals are percentile intervals from a
+    residual bootstrap. Nothing is uploaded and nothing is stored: the fit runs in this browser.
+    The engine is a JavaScript port of the <span class="mono">arcstat</span> C back end, agreeing with it
+    to seven decimal places on the twenty-eight-oil archive.
+  </footer>
+</div>
+<script>
+(function(){
+/* kappa4 engine, JavaScript front. A PORT of arcstat's C back end (arck4.c, arck4fit.c),
+   kept deliberately line-for-line where the C has a guard, because the guards are the part
+   that took the longest to get right. Parity-tested against the C on the 98-run oil archive.
+   Convention: theta = [g0, g1, mu, sg, k, h]; the response is g0 + drift*x + g1*F(x). */
+const K4_EPS = 1e-12;
+
+function k4_y(x, mu, sg, k) {           /* returns [y, z] as in the C's k4_y */
+  const t = (x - mu) / sg;
+  if (Math.abs(k) < K4_EPS) return [Math.exp(-t), 1.0];
+  const zz = 1.0 - k * t;
+  if (zz <= 0.0) return [k > 0 ? 0.0 : Infinity, zz];
+  return [Math.exp(Math.log(zz) / k), zz];
+}
+function k4_F(x, mu, sg, k, h) {
+  const [y] = k4_y(x, mu, sg, k);
+  if (!(y >= 0.0)) return 0.0;
+  if (y === Infinity) return 0.0;
+  if (Math.abs(h) < K4_EPS) return Math.exp(-y);
+  const u = 1.0 - h * y;
+  if (u <= 0.0) return h > 0 ? 0.0 : 1.0;
+  return Math.exp(Math.log(u) / h);
+}
+function k4_f(x, mu, sg, k, h) {
+  const [y, z] = k4_y(x, mu, sg, k);
+  if (!(y > 0.0) || y === Infinity || z <= 0.0) return 0.0;
+  const F = k4_F(x, mu, sg, k, h);
+  if (F <= 0.0) return 0.0;
+  return (1.0 / sg) * (y / z) * Math.pow(F, 1.0 - h);
+}
+function k4_q(u, mu, sg, k, h) {
+  let w;
+  if (Math.abs(h) < K4_EPS) { if (u <= 0.0) return -Infinity; w = -Math.log(u); }
+  else w = (1.0 - Math.pow(u, h)) / h;
+  if (w <= 0.0) return k > 0 ? mu + sg / k : Infinity;
+  if (Math.abs(k) < K4_EPS) return mu - sg * Math.log(w);
+  return mu + (sg / k) * (1.0 - Math.exp(k * Math.log(w)));
+}
+
+/* the two standard readings; mirrors arck4_readings including both guards */
+function k4_readings(theta, grid = 4000) {   /* the C wrapper default; parity depends on it */
+  let [g0, g1, mu, sg, k, h] = theta;
+  if (Math.abs(k) < 1e-4) k = (k >= 0 ? 1 : -1) * 1e-4;
+  const x0 = k4_q(0.001, mu, sg, k, h), x1 = k4_q(0.999, mu, sg, k, h);
+  const out = { a: NaN, b: NaN, mode: NaN };
+  if (!isFinite(x0) || !isFinite(x1) || x1 <= x0) return out;
+  const dx = (x1 - x0) / (grid - 1);
+  let ic = 0, best = -1, m1c = 0;
+  const m1 = new Float64Array(grid);
+  for (let i = 0; i < grid; i++) {
+    const xx = x0 + dx * i;
+    m1[i] = g1 * k4_f(xx, mu, sg, k, h);
+    if (m1[i] > best) { best = m1[i]; ic = i; }
+  }
+  if (ic <= 0 || ic >= grid - 1) return out;   /* boundary "mode" => neither reading exists */
+  const c0 = x0 + dx * ic;
+  out.mode = c0;
+  out.a = c0 - (g1 * k4_F(c0, mu, sg, k, h)) / m1[ic];
+  if (c0 > x0) {
+    const dz = (c0 - x0) / (grid - 1);
+    const m2 = new Float64Array(grid);
+    let m2max = 0;
+    for (let i = 0; i < grid; i++) {
+      m2[i] = g1 * k4_f(x0 + dz * i, mu, sg, k, h);
+      if (m2[i] > m2max) m2max = m2[i];
+    }
+    const thr = 1e-13 * m2max;
+    for (let i = 1; i + 2 < grid; i++) {
+      const d2a = m2[i + 1] - 2 * m2[i] + m2[i - 1];
+      const d2b = m2[i + 2] - 2 * m2[i + 1] + m2[i];
+      if (Math.abs(d2a) > thr && Math.abs(d2b) > thr &&
+          ((d2a > 0 && d2b < 0) || (d2a < 0 && d2b > 0))) { out.b = x0 + dz * i; break; }
+    }
+  }
+  return out;
+}
+
+/* variable projection: solve (g0, drift, g1) exactly for a given shape, return rss and coefs */
+function varproRSS(x, F, y) {
+  const n = x.length;
+  let s1 = n, sx = 0, sf = 0, sxx = 0, sxf = 0, sff = 0, sy = 0, sxy = 0, sfy = 0;
+  for (let i = 0; i < n; i++) {
+    const xi = x[i], fi = F[i], yi = y[i];
+    sx += xi; sf += fi; sxx += xi * xi; sxf += xi * fi; sff += fi * fi;
+    sy += yi; sxy += xi * yi; sfy += fi * yi;
+  }
+  const A = [[s1, sx, sf], [sx, sxx, sxf], [sf, sxf, sff]];
+  const b = [sy, sxy, sfy];
+  const ridge = 1e-10 * (A[0][0] + A[1][1] + A[2][2]);
+  for (let i = 0; i < 3; i++) A[i][i] += ridge;
+  for (let c = 0; c < 3; c++) {                      /* Gaussian elimination, 3x3 */
+    let p = c;
+    for (let r = c + 1; r < 3; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    if (Math.abs(A[p][c]) < 1e-300) return { rss: Infinity, beta: [0, 0, 0] };
+    if (p !== c) { const t = A[p]; A[p] = A[c]; A[c] = t; const tb = b[p]; b[p] = b[c]; b[c] = tb; }
+    for (let r = c + 1; r < 3; r++) {
+      const f = A[r][c] / A[c][c];
+      for (let q = c; q < 3; q++) A[r][q] -= f * A[c][q];
+      b[r] -= f * b[c];
+    }
+  }
+  const beta = [0, 0, 0];
+  for (let r = 2; r >= 0; r--) {
+    let s = b[r];
+    for (let q = r + 1; q < 3; q++) s -= A[r][q] * beta[q];
+    beta[r] = s / A[r][r];
+  }
+  let rss = 0;
+  for (let i = 0; i < n; i++) {
+    const e = y[i] - (beta[0] + beta[1] * x[i] + beta[2] * F[i]);
+    rss += e * e;
+  }
+  return { rss: isFinite(rss) ? rss : Infinity, beta };
+}
+
+/* deterministic Nelder-Mead over the shape, mirroring nmd() in arck4fit.c */
+function nmd(f, start, d, maxit) {
+  const n1 = d + 1;
+  const S = [], fv = [];
+  for (let i = 0; i < n1; i++) {
+    const p = start.slice();
+    if (i > 0) p[i - 1] += (Math.abs(start[i - 1]) > 1e-8 ? 0.10 * Math.abs(start[i - 1]) : 0.10);
+    S.push(p); fv.push(f(p));
+  }
+  for (let it = 0; it < maxit; it++) {
+    let lo = 0, hi = 0;
+    for (let i = 1; i < n1; i++) { if (fv[i] < fv[lo]) lo = i; if (fv[i] > fv[hi]) hi = i; }
+    let nh = hi === 0 ? 1 : 0;
+    for (let i = 0; i < n1; i++) if (i !== hi && fv[i] > fv[nh]) nh = i;
+    if (Math.abs(fv[hi] - fv[lo]) <= 1e-12 * (Math.abs(fv[lo]) + 1e-12)) break;
+    const cen = new Array(4).fill(0);
+    for (let i = 0; i < n1; i++) if (i !== hi) for (let j = 0; j < d; j++) cen[j] += S[i][j] / d;
+    const xr = S[hi].slice();
+    for (let j = 0; j < d; j++) xr[j] = cen[j] + (cen[j] - S[hi][j]);
+    const fr = f(xr);
+    if (fr < fv[lo]) {
+      const xe = S[hi].slice();
+      for (let j = 0; j < d; j++) xe[j] = cen[j] + 2.0 * (cen[j] - S[hi][j]);
+      const fe = f(xe);
+      if (fe < fr) { S[hi] = xe; fv[hi] = fe; } else { S[hi] = xr; fv[hi] = fr; }
+    } else if (fr < fv[nh]) { S[hi] = xr; fv[hi] = fr; }
+    else {
+      const xc = S[hi].slice();
+      for (let j = 0; j < d; j++) xc[j] = cen[j] + 0.5 * (S[hi][j] - cen[j]);
+      const fc = f(xc);
+      if (fc < fv[hi]) { S[hi] = xc; fv[hi] = fc; }
+      else for (let i = 0; i < n1; i++) if (i !== lo) {
+        for (let j = 0; j < d; j++) S[i][j] = S[lo][j] + 0.5 * (S[i][j] - S[lo][j]);
+        fv[i] = f(S[i]);
+      }
+    }
+  }
+  let lo = 0;
+  for (let i = 1; i < n1; i++) if (fv[i] < fv[lo]) lo = i;
+  return { par: S[lo], value: fv[lo] };
+}
+
+function runmed(y, w) {                     /* running median, odd window, as stats::runmed */
+  const n = y.length, half = (w - 1) >> 1, out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
+    const seg = Array.prototype.slice.call(y, lo, hi + 1).sort((a, b) => a - b);
+    out[i] = seg[(seg.length - 1) >> 1];
+  }
+  return out;
+}
+
+/* the paper's start grid, with h carried DIRECTLY (the widened estimator of 26 Aug 2026) */
+function k4_starts(x, y) {
+  const n = x.length;
+  const w = Math.min(21, (n % 2) ? n : n - 1);
+  const ys = runmed(y, w % 2 ? w : w - 1);
+  let lo = Infinity, hi = -Infinity;
+  for (const v of ys) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const kc = Math.max(3, Math.round(0.05 * n));
+  let bi = kc, bd = -Infinity;
+  for (let i = kc; i < n - 1; i++) { const d = (ys[i + 1] - ys[i]) / (x[i + 1] - x[i]);
+    if (d > bd) { bd = d; bi = i; } }
+  const mus = x[bi];
+  let mum = x[0]; for (let i = 0; i < n; i++) if (ys[i] >= lo + 0.5 * (hi - lo)) { mum = x[i]; break; }
+  let i1 = 0, i2 = n - 1;
+  for (let i = 0; i < n; i++) if (ys[i] >= lo + 0.25 * (hi - lo)) { i1 = i; break; }
+  for (let i = 0; i < n; i++) if (ys[i] >= lo + 0.75 * (hi - lo)) { i2 = i; break; }
+  const sg0 = Math.max((x[i2] - x[i1]) / 1.5, 0.02 * (x[n - 1] - x[0]));
+  const m0 = mus === mum ? [mus] : [mus, mum];
+  const st = [];
+  for (const m of m0) for (const fz of [0.5, 1, 2]) for (const k0 of [-0.9, -0.6, -0.3, 0, 0.3])
+    for (const h0 of [-30, -12, -4, -1.5, -1, -0.4, 0.02, 0.1, 0.3, 0.8])
+      st.push([m, Math.log(sg0 * fz), k0, h0]);
+  return st;
+}
+
+const K_LO = -0.98, K_HI = 0.95;
+
+/* One fit at a given lower bound on h. Returns theta, drift, rss. */
+function fitAt(x, y, starts, hFloor, hHi = 4) {
+  const n = x.length, F = new Float64Array(n);
+  const obj = (p) => {
+    const mu = p[0], sg = Math.exp(p[1]), k = p[2], h = p[3];
+    if (!isFinite(sg) || sg <= 0 || k < K_LO || k > K_HI || h < hFloor || h > hHi) return 1e12;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const v = k4_F(x[i], mu, sg, k, h);
+      if (!isFinite(v)) return 1e12;
+      F[i] = v; if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+    if (hi - lo < 1e-8) return 1e12;
+    return varproRSS(x, F, y).rss;
+  };
+  let best = null;
+  for (const s of starts) {
+    if (s[3] <= hFloor) continue;
+    const a = nmd(obj, s, 4, 1500);
+    const b = nmd(obj, a.par, 4, 1500);
+    const o = b.value < a.value ? b : a;
+    if (!best || o.value < best.value) best = o;
+  }
+  if (!best) return null;
+  const [mu, lsg, k, h] = best.par, sg = Math.exp(lsg);
+  for (let i = 0; i < n; i++) F[i] = k4_F(x[i], mu, sg, k, h);
+  const { rss, beta } = varproRSS(x, F, y);
+  return { theta: [beta[0], beta[2], mu, sg, k, h], drift: beta[1], rss };
+}
+
+/* physicality: the plateau must rise and the tangent reading must be a real induction period
+   inside the run that measured it. The 26 Aug 2026 audit found excellent-RSS fits that violate
+   exactly these -- negative plateau, reading outside the window -- and they are not oxidation
+   curves. */
+function isPhysical(fit, x) {
+  if (!fit || !isFinite(fit.rss)) return false;
+  if (fit.theta[1] <= 0) return false;
+  const r = k4_readings(fit.theta);
+  return isFinite(r.a) && r.a >= 0 && r.a <= x[x.length - 1];
+}
+
+/* the ladder: deepest h floor whose best fit is physical */
+function fit_k4w(x, y) {
+  const starts = k4_starts(x, y);
+  for (const flo of [-60, -8, -3, -1.2, -0.5, 0]) {
+    const f = fitAt(x, y, starts, flo);
+    if (isPhysical(f, x)) { f.hFloor = flo; return f; }
+  }
+  const f = fitAt(x, y, starts.filter(s => s[3] > 0), 0);
+  if (f) f.hFloor = 0;
+  return f;
+}
+
+/* Bootstrap intervals. The replicates refit from the POINT ESTIMATE only, not the full
+   multi-start: a resampled curve differs from the original by noise alone, so one local
+   search from there suffices -- and it is what makes this affordable in a browser. */
+function bootstrapReadings(x, y, fit, B = 400, rng = mulberry32(20260827), onProgress) {
+  const n = x.length, F = new Float64Array(n);
+  const [g0, g1, mu, sg, k, h] = fit.theta, drift = fit.drift;
+  const fitted = new Float64Array(n), resid = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    fitted[i] = g0 + drift * x[i] + g1 * k4_F(x[i], mu, sg, k, h);
+    resid[i] = y[i] - fitted[i];
+  }
+  const xr = [x[0], x[n - 1]];
+  const seed = [mu, Math.log(sg), k, h];
+  const A = [], Bb = [];
+  const yb = new Float64Array(n);
+  for (let b = 0; b < B; b++) {
+    for (let i = 0; i < n; i++) yb[i] = fitted[i] + resid[(rng() * n) | 0];
+    const obj = (p) => {
+      const m = p[0], s = Math.exp(p[1]), kk = p[2], hh = p[3];
+      if (!isFinite(s) || s <= 0 || kk < K_LO || kk > K_HI || hh < (fit.hFloor ?? -60) || hh > 4) return 1e12;
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < n; i++) {
+        const v = k4_F(x[i], m, s, kk, hh);
+        if (!isFinite(v)) return 1e12;
+        F[i] = v; if (v < lo) lo = v; if (v > hi) hi = v;
+      }
+      if (hi - lo < 1e-8) return 1e12;
+      return varproRSS(x, F, yb).rss;
+    };
+    const o = nmd(obj, seed, 4, 1200);
+    const [m2, ls2, k2, h2] = o.par, s2 = Math.exp(ls2);
+    for (let i = 0; i < n; i++) F[i] = k4_F(x[i], m2, s2, k2, h2);
+    const vp = varproRSS(x, F, yb);
+    if (vp.beta[2] <= 0) continue;
+    const r = k4_readings([vp.beta[0], vp.beta[2], m2, s2, k2, h2]);
+    if (isFinite(r.a) && r.a >= xr[0] && r.a <= xr[1]) A.push(r.a);
+    if (isFinite(r.b) && r.b >= xr[0] && r.b <= xr[1]) Bb.push(r.b);
+    if (onProgress && (b % 20 === 0)) onProgress(b / B);
+  }
+  const q = (v, p) => {
+    if (v.length < 100) return [NaN, NaN];   /* an interval on a handful of resamples is not an interval */
+    const s = v.slice().sort((a, b) => a - b);
+    const pick = (pp) => { const idx = (s.length - 1) * pp; const lo = Math.floor(idx), hi = Math.ceil(idx);
+      return s[lo] + (s[hi] - s[lo]) * (idx - lo); };
+    return [pick(0.025), pick(0.975)];
+  };
+  return { a: q(A), b: q(Bb), nA: A.length, nB: Bb.length };
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/* the equivalence locus: shapes where the two readings coincide. Both branches. */
+function locusK(h, klo = -0.95, khi = 0.9, steps = 120) {
+  const gap = (k) => { const r = k4_readings([0, 1, 0, 1, k, h]);
+    return (isFinite(r.a) && isFinite(r.b)) ? r.a - r.b : NaN; };
+  let prev = null, prevK = null;
+  for (let i = 0; i <= steps; i++) {
+    const k = klo + (khi - klo) * i / steps, g = gap(k);
+    if (isFinite(g)) {
+      if (prev !== null && Math.sign(g) !== Math.sign(prev)) {
+        let a = prevK, b = k, fa = prev;
+        for (let j = 0; j < 60; j++) { const m = 0.5 * (a + b), fm = gap(m);
+          if (!isFinite(fm)) break;
+          if (Math.sign(fm) === Math.sign(fa)) { a = m; fa = fm; } else b = m; }
+        return 0.5 * (a + b);
+      }
+      prev = g; prevK = k;
+    }
+  }
+  return NaN;
+}
+
+const EXAMPLE = "t_h,cond\n0.0000,1.3307\n0.0667,1.1890\n0.1334,1.2077\n0.2000,1.2490\n0.2667,1.3327\n0.3334,1.4655\n0.4001,1.6191\n0.4668,1.7933\n0.5334,1.9685\n0.6034,2.1466\n0.6701,2.3110\n0.7368,2.4675\n0.8035,2.6201\n0.8702,2.7716\n0.9368,2.9222\n1.0035,3.0699\n1.0702,3.2155\n1.1369,3.3641\n1.2035,3.5108\n1.2702,3.6535\n1.3369,3.7943\n1.4036,3.9360\n1.4703,4.0767\n1.5369,4.2175\n1.6036,4.3543\n1.6736,4.5010\n1.7403,4.6397\n1.8070,4.7785\n1.8736,4.9173\n1.9403,5.0570\n2.0070,5.1968\n2.0737,5.3356\n2.1404,5.4754\n2.2070,5.6112\n2.2737,5.7450\n2.3404,5.8809\n2.4071,6.0206\n2.4737,6.1555\n2.5404,6.2883\n2.6071,6.4271\n2.6738,6.5629\n2.7404,6.6938\n2.8105,6.8435\n2.8771,6.9803\n2.9438,7.1230\n3.0105,7.2696\n3.0772,7.4192\n3.1438,7.5669\n3.2105,7.7224\n3.2772,7.8887\n3.3439,8.0600\n3.4105,8.2362\n3.4772,8.4202\n3.5439,8.6072\n3.6106,8.8041\n3.6772,9.0157\n3.7439,9.2342\n3.8106,9.4743\n3.8773,9.7293\n3.9473,10.0147\n4.0140,10.3080\n4.0806,10.6289\n4.1473,10.9714\n4.2140,11.3483\n4.2807,11.7666\n4.3473,12.2233\n4.4140,12.7342\n4.4807,13.3011\n4.5474,13.9359\n4.6141,14.6357\n4.6807,15.4034\n4.7474,16.2469\n4.8141,17.1702\n4.8808,18.1603\n4.9474,19.2144\n5.0174,20.3985\n5.0841,21.5894\n5.1508,22.8335\n5.2175,24.1229\n5.2842,25.4260\n5.3508,26.7921\n5.4175,28.1937\n5.4842,29.6474\n5.5509,31.1356\n5.6175,32.6622\n5.6842,34.2183\n5.7509,35.8058\n5.8176,37.4249\n5.8842,39.0637\n5.9509,40.7310\n6.0176,42.4141\n6.0843,44.1138\n6.1543,45.9140\n6.2210,47.6365\n6.2876,49.3746\n6.3543,51.1227\n6.4210,52.8894\n6.4877,54.6551\n6.5543,56.4307\n6.6210,58.2063\n6.6877,59.9897\n6.7544,61.7535\n6.8211,63.5379\n6.8877,65.3115\n6.9544,67.0861\n7.0211,68.8637\n7.0878,70.6393\n7.1544,72.3981\n7.2245,74.2121\n7.2911,75.9611\n7.3578,77.7238\n7.4245,79.4610\n7.4912,81.1884\n7.5578,82.9295\n7.6245,84.6500\n7.6912,86.3704\n7.7579,88.0781\n7.8246,89.7897\n7.8912,91.4875\n7.9579,93.1725\n8.0246,94.8438\n8.0913,96.5298\n8.1579,98.1892\n8.2246,99.8438\n8.2913,101.4943\n8.3613,103.2020\n8.4280,104.8221\n8.4947,106.4520\n8.5613,108.0730\n8.6280,109.6734\n8.6947,111.2492\n8.7614,112.8378\n8.8280,114.4244\n8.8947,115.9824\n8.9614,117.5119\n9.0281,119.0611\n9.0948,120.5818\n9.1614,122.0985\n9.2281,123.6005\n9.2948,125.0857\n9.3615,126.5591\n9.4281,128.0069\n9.4982,129.5463\n9.5648,130.9931\n9.6315,132.4361\n9.6982,133.8337\n9.7649,135.2362\n9.8315,136.6171\n9.8982,138.0138\n9.9649,139.3730\n10.0316,140.7421\n10.0983,142.0964\n10.1649,143.4507\n10.2316,144.7932\n10.2983,146.1200\n10.3650,147.4399\n10.4316,148.7322\n10.4983,150.0186\n10.5683,151.3385\n10.6350,152.5885\n10.7017,153.8286\n10.7684,155.0609\n10.8350,156.3079\n10.9017,157.5136\n10.9684,158.7429\n11.0351,159.9565\n11.1017,161.1671\n11.1684,162.3354\n11.2351,163.5303\n11.3018,164.6888\n11.3685,165.8521\n11.4351,167.0027\n11.5018,168.1602\n11.5685,169.3127\n11.6352,170.4476\n11.7052,171.6080\n11.7719,172.7045\n11.8385,173.7979\n11.9052,174.8786\n11.9719,175.9692\n12.0386,177.0233\n12.1052,178.1109\n12.1719,179.1217\n12.2386,180.1670\n12.3053,181.1837\n12.3719,182.2290\n12.4386,183.2733\n12.5053,184.2900\n12.5720,185.3008\n12.6387,186.3126\n12.7053,187.3333\n12.7720,188.3225\n12.8420,189.3608\n12.9087,190.3490\n12.9754,191.3273\n13.0421,192.2949\n13.1087,193.2358\n13.1754,194.1777\n13.2421,195.1157\n13.3088,196.0576\n13.3754,196.9986\n13.4421,197.9218\n13.5088,198.8362\n13.5755,199.7210\n13.6422,200.6314\n13.7088,201.5241\n13.7755,202.4080\n13.8422,203.2938\n13.9122,204.2101\n13.9789,205.1146\n14.0455,205.9936\n14.1122,206.8804\n14.1789,207.7554\n14.2456,208.6058\n14.3123,209.4621\n14.3789,210.3223\n14.4456,211.1471\n14.5123,211.9729\n14.5790,212.8085\n14.6456,213.6146\n14.7123,214.3990\n14.7790,215.2258\n14.8457,215.9679\n14.9124,216.7789\n14.9790,217.5988\n15.0490,218.4216\n15.1157,219.1451\n15.1824,219.9403\n15.2491,220.7366\n15.3158,221.5397\n15.3824,222.3350\n15.4491,223.1076\n15.5158,223.8842\n15.5825,224.6352\n15.6491,225.3793\n15.7158,226.0899\n15.7825,226.8507\n15.8492,227.5869\n15.9158,228.2887\n15.9825,229.0082\n16.0492,229.7621\n16.1192,230.5013\n16.1859,231.2375\n16.2526,231.9747\n16.3192,232.6991\n16.3859,233.4018\n16.4526,234.0662\n16.5193,234.7434\n16.5860,235.4402\n16.6526,236.1311\n16.7193,236.8516\n16.7860,237.5593\n16.8527,238.2620\n16.9193,238.9609\n16.9860,239.6577\n17.0527,240.3545\n17.1194,241.0307\n17.1860,241.7128\n17.2561,242.3801\n17.3227,243.0278\n17.3894,243.6911\n17.4561,244.3319\n17.5228,244.9834\n17.5894,245.6419\n17.6561,246.3151\n17.7228,246.9834\n17.7895,247.6143\n17.8562,248.2255\n17.9228,248.8033\n17.9895,249.4480\n18.0562,250.0818\n18.1229,250.6832\n18.1895,251.2993\n18.2562,251.9214\n18.3229,252.5208\n18.3929,253.1635\n18.4596,253.7580\n18.5263,254.3682\n18.5929,254.9834\n18.6596,255.5808\n18.7263,256.1468\n18.7930,256.7176\n18.8596,257.3072\n18.9263,257.9184\n18.9930,258.4991\n19.0597,259.1064\n19.1264,259.7068\n19.1930,260.2875\n19.2597,260.8337\n19.3264,261.4243\n19.3931,261.9872\n19.4631,262.5601\n19.5298,263.1359\n19.5964,263.7176\n19.6631,264.3012\n19.7298,264.7412\n19.7965,265.3268\n19.8631,265.8829\n19.9298,266.4144\n19.9965,266.9282";
+const SELFTEST = [{"run":"Marula-3","oil":"Marula","t":[0,0.03334,0.07002,0.10336,0.1367,0.17338,0.20672,0.24006,0.27674,0.31008,0.34342,0.38009,0.41343,0.44677,0.48345,0.51679,0.55013,0.5868,0.62014,0.65349,0.69016,0.7235,0.75684,0.79351,0.82685,0.86019,0.89687,0.93021,0.96355,1.00022,1.03356,1.07024,1.10358,1.13691,1.17359,1.20693,1.24027,1.27694,1.31028,1.34362,1.3803,1.41363,1.44697,1.48365,1.51699,1.55033,1.587,1.62034,1.65368,1.69035,1.72369,1.75703,1.7937,1.82704,1.86038,1.89705,1.93039,1.96373,2.00041,2.03374,2.06708,2.10376,2.13709,2.17043,2.20711,2.24045,2.27379,2.31046,2.3438,2.37714,2.41381,2.44715,2.48049,2.51716,2.5505,2.58384,2.62051,2.65385,2.68719,2.72386,2.7572,2.79054,2.82721,2.86055,2.89389,2.93056,2.9639,2.99724,3.03391,3.06725,3.10392,3.13726,3.1706,3.20727,3.24061,3.27395,3.31062,3.34396,3.3773,3.41397,3.44731,3.48065,3.51732,3.55066,3.584,3.62067,3.65401,3.68735,3.72402,3.75736,3.7907,3.82737,3.86071,3.89405,3.93072,3.96406,3.9974,4.03407,4.06741,4.10075,4.13742,4.17076,4.2041,4.24077,4.27411,4.30745,4.34412,4.37746,4.4108,4.44747,4.48081,4.51415,4.55082,4.58416,4.6175,4.65417,4.68751,4.72085,4.75752,4.79086,4.8242,4.86087,4.89421,4.92755,4.96422,4.99756,5.0309,5.06757,5.10091,5.13425,5.17092,5.20426,5.24093,5.27427,5.30761,5.34428,5.37762,5.41096,5.44763,5.48097,5.51431,5.55098,5.58432,5.61766,5.65433,5.68767,5.72101,5.75768,5.79102,5.82436,5.86103,5.89437,5.92771,5.96438,5.99772,6.03106,6.06773,6.10107,6.13441,6.17108,6.20442,6.23776,6.27443,6.30777,6.34111,6.37778,6.41112,6.44446,6.48113,6.51447,6.54781,6.58448,6.61782,6.65116,6.68783,6.72117,6.75451,6.79118,6.82452,6.85786,6.89453,6.92787,6.96121,6.99788,7.03122,7.06456,7.10123,7.13457,7.16791,7.20458,7.23792,7.27459,7.30793,7.34127,7.37794,7.41128,7.44462,7.48129,7.51463,7.54797,7.58464,7.61798,7.65132,7.68799,7.72133,7.75467,7.79134,7.82468,7.85802,7.89469,7.92803,7.96137,7.99804,8.03138,8.06472,8.10139,8.13473,8.16806,8.20474,8.23808,8.27141,8.30809,8.34143,8.37476,8.41144,8.44478,8.47812,8.51479,8.54813,8.58146,8.61814,8.65148,8.68482,8.72149,8.75483,8.78816,8.82484,8.85818,8.89151,8.92819,8.96152,8.99486,9.03154,9.06488,9.09821,9.13489,9.16822,9.20156,9.23824,9.27157,9.30825,9.34158,9.37492,9.4116,9.44493,9.47827,9.51495,9.54828,9.58162,9.61829,9.65163,9.68497,9.72164,9.75498,9.78832,9.82499,9.85833,9.89167,9.92834,9.96168,9.99502,10.03169,10.06503,10.09837,10.13504,10.16838,10.20172,10.23839,10.27173,10.30507,10.34174,10.37508,10.40842,10.44509,10.47843,10.51176,10.54844,10.58178,10.61511,10.65179,10.68512,10.71846,10.75514,10.78847,10.82181,10.85848,10.89182,10.92516,10.96184,10.99517,11.02851,11.06518,11.09852,11.13186,11.16853,11.20187,11.23521,11.27188,11.30522,11.33856,11.37523,11.40857,11.44524,11.47858,11.51192,11.54859,11.58193,11.61527,11.65194,11.68528,11.71862,11.75529,11.78863,11.82197,11.85864,11.89198,11.92532,11.96199,11.99533,12.02867,12.06534,12.09868,12.13202,12.16869,12.20203,12.23536,12.27204,12.30538,12.33871,12.37539,12.40872,12.44206,12.47874,12.51207,12.54541,12.58208,12.61542,12.64876,12.68543,12.71877,12.75211,12.78878,12.82212,12.85546,12.89213,12.92547,12.95881,12.99548,13.02882,13.06216,13.09883,13.13217,13.16551,13.20218,13.23552,13.26886,13.30553,13.33887,13.37221,13.40888,13.44222,13.47889,13.51223,13.54557,13.58224,13.61558,13.64892,13.68559,13.71893,13.75226,13.78894,13.82228,13.85561,13.89229,13.92562,13.95896,13.99564,14.02897,14.06231,14.09899,14.13232,14.16566,14.20233,14.23567,14.26901,14.30568,14.33902,14.37236,14.40903,14.44237,14.47571,14.51238,14.54572,14.57906,14.61573,14.64907,14.68241,14.71908,14.75242,14.78576,14.82243,14.85577,14.88911,14.92578,14.95912,14.99245,15.02913,15.06246,15.0958,15.13248,15.16581,15.19915,15.23582,15.26916,15.3025,15.33917,15.37251,15.40585,15.44252,15.47586,15.51253,15.54587,15.57921,15.61588,15.64922,15.68256,15.71923,15.75257,15.78591,15.82258,15.85592,15.88926,15.92593,15.95927,15.9926,16.02928,16.06262,16.09595,16.13263,16.16596,16.1993,16.23598,16.26931,16.30265,16.33932,16.37266,16.406,16.44267,16.47601,16.50935,16.54602,16.57936,16.6127,16.64937,16.68271,16.71605,16.75272,16.78606,16.8194,16.85607,16.88941,16.92275,16.95942,16.99276,17.0261,17.06277,17.09611,17.12945,17.16612,17.19946,17.23279,17.26947,17.30281,17.33614,17.37282,17.40615,17.43949,17.47617,17.5095,17.54284,17.57951,17.61285,17.64953,17.68286,17.7162,17.75287,17.78621,17.81955,17.85622,17.88956,17.9229,17.95957,17.99291,18.02625,18.06292,18.09626,18.1296,18.16627,18.19961,18.23295,18.26962,18.30296,18.33629,18.37297,18.40631,18.43964,18.47632,18.50965,18.54299,18.57966,18.613,18.64634,18.68301,18.71635,18.74969,18.78636,18.8197,18.85304,18.88971,18.92305,18.95639,18.99306,19.0264,19.05974,19.09641,19.12975,19.16309,19.19976,19.2331,19.26643,19.30311,19.33645,19.36978,19.40646,19.43979,19.47313,19.5098,19.54314,19.57648,19.61315,19.64649,19.68316,19.7165,19.74984,19.78651,19.81985,19.85319,19.88986,19.9232,19.95654,19.99321,20.02655,20.05989,20.09656,20.1299,20.16324,20.19991,20.23325,20.26658,20.30326,20.33659,20.36993,20.40661,20.43994,20.47328,20.50996,20.54329,20.57663,20.6133,20.64664],"y":[1.6272,1.5057,1.4384,1.4072,1.3921,1.3801,1.3771,1.3851,1.3982,1.4183,1.4524,1.4856,1.5137,1.5478,1.584,1.6171,1.6473,1.6794,1.7116,1.7387,1.7638,1.7879,1.816,1.8462,1.8652,1.8934,1.9205,1.9406,1.9637,1.9868,2.0059,2.032,2.0511,2.0752,2.0973,2.1214,2.1455,2.1686,2.1947,2.2128,2.2389,2.264,2.2811,2.3092,2.3303,2.3544,2.3775,2.3976,2.4217,2.4458,2.4659,2.488,2.5121,2.5332,2.5533,2.5784,2.6005,2.6196,2.6417,2.6618,2.6758,2.702,2.721,2.7431,2.7652,2.7813,2.8044,2.8255,2.8476,2.8617,2.8868,2.9079,2.9259,2.949,2.9651,2.9882,3.0023,3.0214,3.0354,3.0535,3.0686,3.0857,3.0997,3.1128,3.1309,3.1459,3.162,3.1781,3.1921,3.2102,3.2233,3.2403,3.2574,3.2725,3.2926,3.3046,3.3207,3.3388,3.3508,3.3739,3.389,3.4101,3.4262,3.4412,3.4613,3.4764,3.4925,3.5085,3.5276,3.5467,3.5618,3.5808,3.5959,3.618,3.6411,3.6542,3.6712,3.6974,3.7164,3.7315,3.7526,3.7677,3.7888,3.8068,3.8249,3.845,3.8611,3.8832,3.8993,3.9183,3.9384,3.9585,3.9816,3.9927,4.0178,4.0429,4.062,4.078,4.1001,4.1172,4.1363,4.1584,4.1765,4.1926,4.2126,4.2227,4.2398,4.2538,4.2709,4.2809,4.298,4.3161,4.3302,4.3412,4.3543,4.3663,4.3834,4.3945,4.4105,4.4246,4.4417,4.4487,4.4638,4.4818,4.4979,4.511,4.528,4.5471,4.5622,4.5763,4.6004,4.6174,4.6375,4.6556,4.6717,4.6888,4.7098,4.7269,4.753,4.7711,4.7882,4.8063,4.8304,4.8444,4.8686,4.8846,4.9027,4.9208,4.9459,4.963,4.98,5.0021,5.0263,5.0443,5.0614,5.0845,5.1026,5.1267,5.1438,5.1619,5.189,5.204,5.2241,5.2482,5.2653,5.2874,5.3125,5.3286,5.3467,5.3698,5.3909,5.417,5.432,5.4541,5.4752,5.5004,5.5204,5.5435,5.5636,5.5867,5.6088,5.6319,5.652,5.6711,5.6892,5.7123,5.7374,5.7484,5.7685,5.7896,5.8047,5.8278,5.8479,5.863,5.8861,5.9061,5.9242,5.9433,5.9694,5.9875,6.0086,6.0397,6.0659,6.088,6.1161,6.1442,6.1713,6.2055,6.2296,6.2577,6.2888,6.317,6.3441,6.3792,6.4074,6.4405,6.4737,6.5088,6.5379,6.5761,6.6063,6.6384,6.6735,6.7017,6.7388,6.774,6.8081,6.8413,6.8775,6.9156,6.9528,6.9879,7.0241,7.0643,7.0974,7.1336,7.1647,7.2079,7.2411,7.2812,7.3194,7.3556,7.3968,7.4339,7.4711,7.5163,7.5524,7.5916,7.6348,7.674,7.7142,7.7604,7.7985,7.8437,7.8899,7.9311,7.9763,8.0215,8.0637,8.1079,8.1441,8.1852,8.2224,8.2726,8.3058,8.351,8.3912,8.4333,8.4715,8.5227,8.5609,8.6061,8.6533,8.6995,8.7487,8.801,8.8522,8.9014,8.9627,9.0159,9.0672,9.1224,9.1726,9.2259,9.2871,9.3384,9.3916,9.4509,9.5061,9.5563,9.6156,9.6708,9.7381,9.7954,9.8516,9.9149,9.9742,10.0284,10.0967,10.156,10.2183,10.2805,10.3388,10.394,10.4603,10.5226,10.5809,10.6462,10.7094,10.7667,10.832,10.8953,10.9535,11.0188,11.0881,11.1434,11.2167,11.281,11.3452,11.4125,11.4788,11.5431,11.6175,11.6807,11.744,11.8214,11.8856,11.9509,12.0182,12.0745,12.1398,12.2081,12.2663,12.3256,12.3919,12.4501,12.5124,12.5817,12.641,12.7093,12.7746,12.8489,12.9253,13.0046,13.086,13.1623,13.2497,13.3321,13.4114,13.5018,13.5872,13.6796,13.763,13.8524,13.9498,14.0382,14.1316,14.2381,14.3295,14.4239,14.5284,14.6298,14.7302,14.8397,14.9482,15.0527,15.1682,15.2837,15.3872,15.5167,15.6312,15.7437,15.8803,15.9979,16.1234,16.254,16.3796,16.5111,16.6538,16.7854,16.9189,17.0676,17.2072,17.3519,17.5086,17.6522,17.8039,17.9756,18.1293,18.284,18.4628,18.6185,18.7832,18.97,19.1418,19.3166,19.5064,19.6912,19.871,20.0769,20.2638,20.4576,20.6696,20.8775,21.0794,21.3084,21.5213,21.7343,21.9874,22.2174,22.4746,22.7106,22.9557,23.2309,23.483,23.7442,24.0284,24.2986,24.5709,24.8762,25.1564,25.4407,25.7591,26.0645,26.3769,26.7174,27.0338,27.3642,27.7268,28.0653,28.4079,28.8006,29.1662,29.5479,29.9698,30.3585,30.7553,31.1992,31.604,32.0209,32.4779,32.8927,33.3216,33.7917,34.2327,34.6606,35.1457,35.5927,36.0407,36.5469,36.9969,37.458,37.9682,38.4142,38.8772,39.3815,39.8355,40.2925,40.8088,41.2879,41.764,42.2874,42.7675,43.2446,43.7749,44.2571,44.7473,45.2645,45.7487,46.2389,46.7793,47.2664,47.7917,48.2849,48.7651,49.3024,49.7966,50.2908,50.8282,51.3164,51.8095,52.3449,52.8291,53.3142,53.8556,54.3438,54.8279,55.3693,55.8515,56.3467,56.9101,57.3993,57.8624,58.3646,58.8367,59.3228,59.8502,60.3243,60.8064,61.3317,61.7988,62.2809,62.8173,63.2854,63.7525,64.2637,64.7348,65.2029,65.7172,66.1893,66.6212,67.1214,67.5925,68.0575,68.5507,68.9977,69.4377,69.956,70.3939,70.859,71.3612,71.8162,72.2642,72.7694,73.2204,73.6463,74.1023,74.5403,74.9531,75.4423,75.8852,76.3423,76.742,77.1438,77.5938,77.9885,78.3823,78.8132,79.2019,79.5856,79.9934,80.3611,80.7397,81.1696,81.5785,81.9622,82.4232,82.831,83.2408,83.6858,84.0846,84.5014,84.9574,85.3672,85.771,86.221,86.6379,87.0527,87.4876,87.9075],"a":15.2635,"b":16.4126,"k":0.088,"h":-0.89875,"floor":-60},{"run":"Macadamia-2","oil":"Macadamia","t":[0,0.04335,0.08669,0.13004,0.17338,0.21672,0.26007,0.30341,0.34676,0.3901,0.43345,0.47679,0.52013,0.56348,0.60682,0.65016,0.69351,0.73685,0.78019,0.82354,0.86688,0.91022,0.95357,0.99691,1.04025,1.08359,1.12694,1.17028,1.21362,1.25696,1.30031,1.34365,1.38699,1.43033,1.47368,1.51702,1.56036,1.6037,1.64704,1.69038,1.73373,1.77707,1.82041,1.86042,1.90376,1.9471,1.99044,2.03378,2.07713,2.12047,2.16381,2.20715,2.25049,2.29383,2.33717,2.38051,2.42386,2.4672,2.51054,2.55388,2.59722,2.64056,2.6839,2.72724,2.77058,2.81392,2.85727,2.90061,2.94395,2.98729,3.03063,3.07397,3.11731,3.16065,3.20399,3.24733,3.29067,3.33401,3.37736,3.4207,3.46404,3.50738,3.55072,3.59406,3.6374,3.68074,3.72408,3.76742,3.81076,3.8541,3.89744,3.94078,3.98413,4.02747,4.07081,4.11415,4.15749,4.20083,4.24417,4.28751,4.33085,4.37419,4.41753,4.46087,4.50421,4.54755,4.59089,4.63423,4.67757,4.72091,4.76425,4.80759,4.85093,4.89427,4.93761,4.98095,5.02429,5.06764,5.11098,5.15432,5.19766,5.241,5.28434,5.32768,5.37102,5.41436,5.4577,5.50104,5.54438,5.58438,5.62772,5.67106,5.7144,5.75774,5.80108,5.84443,5.88777,5.93111,5.97445,6.01779,6.06113,6.10447,6.14781,6.19115,6.23449,6.27783,6.32117,6.36451,6.40785,6.45119,6.49453,6.53787,6.58121,6.62455,6.66789,6.71123,6.75457,6.79791,6.84125,6.88459,6.92793,6.97127,7.01462,7.05796,7.1013,7.14464,7.18798,7.23132,7.27466,7.318,7.36134,7.40468,7.44802,7.49136,7.5347,7.57804,7.62138,7.66472,7.70806,7.7514,7.79474,7.83808,7.88142,7.92476,7.96811,8.01145,8.05479,8.09813,8.14147,8.18481,8.22815,8.27149,8.31483,8.35817,8.40151,8.44485,8.48819,8.53153,8.57487,8.61821,8.66155,8.70489,8.74824,8.79158,8.83492,8.87826,8.9216,8.96494,9.00828,9.05162,9.09496,9.1383,9.18164,9.22498,9.26499,9.30833,9.35167,9.39501,9.43835,9.48169,9.52503,9.56837,9.61171,9.65505,9.69839,9.74173,9.78507,9.82841,9.87175,9.9151,9.95844,10.00178,10.04512,10.08846,10.1318,10.17514,10.21848,10.26182,10.30516,10.3485,10.39184,10.43518,10.47852,10.52186,10.5652,10.60854,10.65188,10.69522,10.73856,10.7819,10.82524,10.86859,10.91193,10.95527,10.99861,11.04195,11.08529,11.12863,11.17197,11.21531,11.25865,11.30199,11.34533,11.38867,11.43201,11.47535,11.51869,11.56203,11.60537,11.64871,11.69206,11.7354,11.77874,11.82208,11.86542,11.90876,11.9521,11.99544,12.03878,12.08212,12.12546,12.1688,12.21214,12.25548,12.29882,12.34216,12.3855,12.42884,12.47218,12.51552,12.55887,12.60221,12.64555,12.68889,12.73223,12.77557,12.81891,12.86225,12.90559,12.94893,12.98894,13.03228,13.07562,13.11896,13.1623,13.20564,13.24898,13.29232,13.33566,13.379,13.42234,13.46568,13.50902,13.55236,13.5957,13.63904,13.68238,13.72572,13.76907,13.81241,13.85575,13.89909,13.94243,13.98577,14.02911,14.07245,14.11579,14.15913,14.20247,14.24581,14.28915,14.33249,14.37583,14.41917,14.46251,14.50585,14.54919,14.59254,14.63588,14.67922,14.72256,14.7659,14.80924,14.85258,14.89592,14.93926,14.9826,15.02594,15.06928,15.11262,15.15596,15.1993,15.24264,15.28598,15.32932,15.37266,15.416,15.45934,15.50268,15.54602,15.58937,15.63271,15.67605,15.71939,15.76273,15.80607,15.84941,15.89275,15.93609,15.97943,16.02277,16.06611,16.10945,16.15279,16.19613,16.23947,16.28281,16.32615,16.36949,16.41284,16.45618,16.49952,16.54286,16.5862,16.62954,16.67288,16.71288,16.75623,16.79957,16.84291,16.88625,16.92959,16.97293,17.01627,17.05961,17.10295,17.14629,17.18963,17.23297,17.27631,17.31965,17.36299,17.40633,17.44967,17.49301,17.53635,17.57969,17.62303,17.66637,17.70971,17.75306,17.7964,17.83974,17.88308,17.92642,17.96976,18.0131,18.05644,18.09978,18.14312,18.18646,18.2298,18.27314,18.31648,18.35982,18.40316,18.4465,18.48984,18.53318,18.57652,18.61987,18.66321,18.70655,18.74989,18.79323,18.83657,18.87991,18.92325,18.96659,19.00993,19.05327,19.09661,19.13995,19.18329,19.22663,19.26997,19.31331,19.35665,19.39999,19.44333,19.48668,19.53001,19.57336,19.6167,19.66004,19.70338,19.74672,19.79006,19.8334,19.87674,19.92008,19.96342,20.00676,20.0501,20.09344,20.13678,20.18012,20.22346,20.2668,20.31014,20.35348,20.39349,20.43683,20.48017,20.52351,20.56685,20.61019,20.65353,20.69687,20.74021,20.78356,20.8269,20.87024,20.91358,20.95692,21.00026,21.0436,21.08694,21.13028,21.17362,21.21696,21.2603,21.30364,21.34698,21.39032,21.43366,21.477,21.52034,21.56368,21.60702,21.65037,21.69371,21.73705,21.78039,21.82373,21.86707,21.91041,21.95375,21.99709,22.04043,22.08377,22.12711,22.17045,22.21379,22.25713,22.30047,22.34381,22.38716,22.4305,22.47384,22.51718,22.56052,22.60386,22.6472,22.69054,22.73388,22.77722,22.82056,22.8639,22.90724,22.95058,22.99392,23.03726,23.0806,23.12394,23.16728,23.21063,23.25397,23.29731,23.34065,23.38399,23.42733,23.47067,23.51401,23.55735,23.60069,23.64403,23.68737,23.73071,23.77405,23.81739,23.86073,23.90407,23.94741,23.99076,24.0341,24.07744,24.11744,24.16078,24.20412,24.24746,24.2908,24.33414,24.37748,24.42083,24.46417,24.50751,24.55085,24.59419,24.63753,24.68087,24.72421,24.76755,24.81089,24.85423,24.89757,24.94091,24.98425,25.02759,25.07093,25.11427,25.15761,25.20095,25.24429,25.28763,25.33097,25.37431,25.41765,25.46099,25.50433,25.54767,25.59101,25.63435,25.67769,25.72103,25.76437,25.80771,25.85105,25.89439,25.93773],"y":[1.4163,1.3924,1.4302,1.4601,1.5288,1.6215,1.74,1.8466,1.9432,2.0278,2.1025,2.1693,2.23,2.2848,2.3426,2.3993,2.4531,2.5059,2.5637,2.6165,2.6762,2.729,2.7848,2.8396,2.8983,2.9501,3.0069,3.0627,3.1175,3.1742,3.231,3.2918,3.3475,3.4173,3.477,3.5368,3.5975,3.6643,3.734,3.8087,3.8784,3.9531,4.0298,4.1025,4.1862,4.2718,4.3684,4.466,4.5656,4.6772,4.7907,4.9152,5.0457,5.1792,5.3276,5.482,5.6533,5.8246,6.0128,6.1981,6.4043,6.6094,6.8276,7.0527,7.2917,7.5317,7.7678,8.0158,8.2767,8.5317,8.8006,9.0726,9.3494,9.6303,9.9182,10.213,10.5058,10.8106,11.1183,11.4281,11.7398,12.0705,12.3942,12.7239,13.0625,13.4032,13.7448,14.0964,14.4549,14.8085,15.1721,15.5366,15.9071,16.2856,16.6561,17.0356,17.423,17.8025,18.1979,18.5834,18.9768,19.3861,19.7855,20.1899,20.6023,21.0136,21.4279,21.8393,22.2606,22.6839,23.1002,23.5225,23.9548,24.3701,24.7964,25.2376,25.6619,26.1022,26.5394,26.9856,27.4169,27.8661,28.3153,28.7466,29.1908,29.635,30.0792,30.5354,30.9935,31.4099,31.869,32.3312,32.7923,33.2525,33.7106,34.1548,34.5871,35.0214,35.4656,35.8968,36.3351,36.7683,37.1976,37.6329,38.0711,38.5004,38.9356,39.3649,39.7912,40.2275,40.6677,41.1089,41.5511,41.9904,42.4316,42.8868,43.323,43.7553,44.2134,44.6597,45.1198,45.558,46.0053,46.4495,46.9096,47.3588,47.809,48.2582,48.7094,49.1695,49.6297,50.0928,50.551,51.0141,51.4384,51.8976,52.3597,52.8318,53.3139,53.7741,54.2472,54.7232,55.1844,55.6475,56.1196,56.5838,57.0419,57.525,57.9991,58.4812,58.9403,59.3965,59.8736,60.3367,60.8128,61.2819,61.754,62.2301,62.7022,63.1853,63.6624,64.1305,64.5936,65.0727,65.5448,66.0149,66.495,66.9691,67.4402,67.9262,68.4133,68.9083,69.3744,69.8515,70.3027,70.7728,71.2389,71.72,72.2011,72.6801,73.1632,73.6383,74.1124,74.5935,75.0696,75.5516,76.0426,76.5227,77.0108,77.4908,77.9799,78.4709,78.943,79.4141,79.9041,80.3972,80.8951,81.3872,81.8752,82.3523,82.8413,83.3105,83.7945,84.2855,84.7567,85.2218,85.7048,86.1779,86.66,87.159,87.6461,88.157,88.644,89.1301,89.6181,90.1221,90.641,91.143,91.637,92.149,92.637,93.138,93.644,94.13,94.624,95.135,95.6419,96.1489,96.6529,97.1688,97.6748,98.1887,98.6947,99.2027,99.7126,100.2186,100.7235,101.2176,101.7146,102.2165,102.7215,103.2135,103.7195,104.2295,104.7464,105.2553,105.7434,106.2603,106.7543,107.2563,107.7682,108.2672,108.7682,109.2682,109.7662,110.2732,110.7772,111.2831,111.806,112.315,112.7971,113.306,113.8229,114.3339,114.8488,115.3508,115.8687,116.3767,116.8687,117.3717,117.8876,118.3976,118.8996,119.4065,119.9234,120.4324,120.9284,121.4115,121.8975,122.4035,122.9234,123.4403,123.9363,124.4493,124.9642,125.4881,125.9781,126.4801,126.9931,127.4781,127.9622,128.4542,128.9273,129.4203,129.9074,130.4054,130.9093,131.4203,131.9083,132.3904,132.9083,133.4033,133.8814,134.3674,134.8495,135.3226,135.8256,136.3206,136.8047,137.2927,137.7907,138.2877,138.7718,139.2329,139.696,140.1821,140.6552,141.1223,141.5914,142.0665,142.5317,143.0187,143.4599,143.934,144.3992,144.8942,145.3513,145.8613,146.3673,146.8483,147.2916,147.7716,148.2507,148.685,149.177,149.675,150.1421,150.6092,151.0594,151.5196,152.0126,152.4757,152.9438,153.3851,153.8721,154.3393,154.7466,155.2177,155.6749,156.1599,156.5932,157.0324,157.4657,157.9149,158.3541,158.8063,159.2814,159.7396,160.1927,160.6519,161.118,161.5742,162.0154,162.4467,162.8979,163.3322,163.7554,164.1927,164.6459,165.0961,165.5532,166.0144,166.4227,166.845,167.2634,167.7166,168.1667,168.6319,169.0552,169.5024,169.9396,170.3878,170.833,171.2762,171.7105,172.088,172.5123,172.9127,173.34,173.7762,174.2264,174.6537,175.072,175.4953,175.9027,176.32,176.7562,177.1626,177.572,178.0321,178.4763,178.8797,179.314,179.7273,180.1387,180.5759,180.9892,181.3916,181.8647,182.2602,182.6765,183.1057,183.527,183.9563,184.3119,184.7502,185.1724,185.5908,186.0101,186.4224,186.8248,187.1993,187.6405,188.0419,188.4104,188.8118,189.2172,189.6485,190.0638,190.4951,190.8985,191.266,191.6953,192.1106,192.502,192.8895,193.2898,193.6624,194.0608,194.4681,194.8755,195.254,195.6713,196.0976,196.4761,196.8924,197.3047,197.6703,198.0667,198.4691,198.8943,199.2728,199.6712,200.0627,200.466,200.8644,201.1981,201.5826,201.9093,202.2987,202.6861,203.0756,203.4899,203.8564,204.1991,204.6014,204.957,205.3295,205.713,206.0974,206.4689,206.8514,207.2478,207.6831,208.0406,208.4002,208.7707,209.1462,209.5067,209.8783,210.2647,210.6063,210.9549,211.3115,211.6989,212.0197,212.2597,212.6093,212.9748,213.3284,213.6919,214.0784,214.4509,214.8184,215.2288,215.5624,215.9419,216.2775,216.6271,216.9777,217.3034,217.5823,217.9,218.2028,218.5684,218.9279,219.3412,219.7028,220.1669,220.6181,221.0594,221.5344,221.9986,222.4916,222.9617,223.4049,223.8571,224.2605,224.7167,225.1469,225.5792,226.0523,226.4626,226.8959,227.369,227.8023,228.2027,228.5991,229.0234,229.4586,229.8291,230.2126,230.5791,230.9536,231.354,231.7066,232.1438,232.4984,232.849,233.2265,233.606,233.9715,234.3609,234.7753,235.1269,235.5043,235.9426,236.3091,236.7294,237.1239,237.5471,237.9027,238.3161,238.6886,239.0192,239.3848,239.7872,240.1507,240.4983,240.8688],"a":3.7637,"b":null,"k":-0.4957,"h":-1.51754,"floor":-60},{"run":"Coconut-2","oil":"Coconut","t":[0,0.04001,0.08336,0.12337,0.16338,0.20672,0.24673,0.29007,0.33008,0.37009,0.41344,0.45344,0.49345,0.5368,0.5768,0.61681,0.66016,0.70017,0.74017,0.78352,0.82353,0.86687,0.90688,0.94688,0.99023,1.03024,1.07024,1.11359,1.15359,1.1936,1.23694,1.27695,1.32029,1.3603,1.40031,1.44365,1.48366,1.52367,1.56701,1.60702,1.64702,1.69037,1.73038,1.77372,1.81372,1.85373,1.89707,1.93708,1.97709,2.02043,2.06044,2.10045,2.14379,2.18379,2.2238,2.26714,2.30715,2.35049,2.3905,2.43051,2.47385,2.51385,2.55386,2.5972,2.63721,2.67722,2.72056,2.76057,2.80391,2.84392,2.88392,2.92726,2.96727,3.00728,3.05062,3.09063,3.13063,3.17397,3.21398,3.25399,3.29733,3.33734,3.38068,3.42068,3.46069,3.50403,3.54404,3.58405,3.62739,3.66739,3.7074,3.75074,3.79075,3.83409,3.8741,3.9141,3.95744,3.99745,4.03746,4.0808,4.1208,4.16081,4.20415,4.24416,4.2875,4.32751,4.36751,4.41085,4.45086,4.49087,4.53421,4.57422,4.61422,4.65756,4.69757,4.73758,4.78092,4.82092,4.86426,4.90427,4.94428,4.98762,5.02763,5.06763,5.11097,5.15098,5.19099,5.23433,5.27433,5.31768,5.35768,5.39769,5.44103,5.48104,5.52104,5.56438,5.60439,5.6444,5.68774,5.72774,5.76775,5.81109,5.8511,5.89444,5.93444,5.97445,6.01779,6.0578,6.09781,6.14115,6.18115,6.22116,6.2645,6.30451,6.34785,6.38785,6.42786,6.4712,6.51121,6.55122,6.59455,6.63456,6.67457,6.71791,6.75792,6.79792,6.84126,6.88127,6.92461,6.96462,7.00462,7.04796,7.08797,7.12798,7.17132,7.21132,7.25133,7.29467,7.33468,7.37802,7.41802,7.45803,7.50137,7.54138,7.58139,7.62473,7.66473,7.70474,7.74808,7.78809,7.83143,7.87143,7.91144,7.95478,7.99479,8.03479,8.07813,8.11814,8.15815,8.20149,8.2415,8.2815,8.32484,8.36485,8.40819,8.4482,8.4882,8.53154,8.57155,8.61156,8.6549,8.6949,8.73491,8.77825,8.81826,8.8616,8.9016,8.94161,8.98495,9.02496,9.06496,9.1083,9.14831,9.18832,9.23166,9.27166,9.31167,9.35501,9.39502,9.43836,9.47836,9.51837,9.56171,9.60172,9.64172,9.68506,9.72507,9.76508,9.80842,9.84842,9.89176,9.93177,9.97178,10.01512,10.05512,10.09513,10.13847,10.17848,10.21848,10.26182,10.30183,10.34517,10.38518,10.42519,10.46852,10.50853,10.54854,10.59188,10.63188,10.67189,10.71523,10.75524,10.79524,10.83858,10.87859,10.92193,10.96194,11.00194,11.04528,11.08529,11.1253,11.16864,11.20864,11.24865,11.29199,11.332,11.37534,11.41534,11.45535,11.49869,11.5387,11.5787,11.62204,11.66205,11.70206,11.7454,11.7854,11.82541,11.86875,11.90876,11.9521,11.9921,12.03211,12.07545,12.11546,12.15546,12.1988,12.23881,12.27882,12.32216,12.36216,12.4055,12.44551,12.48552,12.52886,12.56886,12.60887,12.65221,12.69222,12.73222,12.77556,12.81557,12.85891,12.89892,12.93892,12.98226,13.02227,13.06228,13.10562,13.14562,13.18563,13.22897,13.26898,13.30898,13.35232,13.39233,13.43567,13.47568,13.51568,13.55902,13.59903,13.63904,13.68238,13.72238,13.76239,13.80573,13.84574,13.88908,13.92908,13.96909,14.01243,14.05244,14.09244,14.13578,14.17579,14.2158,14.25914,14.29914,14.33915,14.38249,14.4225,14.46584,14.50584,14.54585,14.58919,14.62919,14.6692,14.71254,14.75255,14.79255,14.83589,14.8759,14.91924,14.95925,14.99925,15.04259,15.0826,15.12261,15.16595,15.20595,15.24596,15.2893,15.32931,15.37265,15.41265,15.45266,15.496,15.53601,15.57601,15.61935,15.65936,15.69936,15.74271,15.78271,15.82272,15.86606,15.90606,15.9494,15.98941,16.02942,16.07276,16.11276,16.15277,16.19611,16.23612,16.27612,16.31946,16.35947,16.40281,16.44282,16.48282,16.52616,16.56617,16.60618,16.64952,16.68952,16.72953,16.77287,16.81287,16.85288,16.89622,16.93623,16.97957,17.01957,17.05958,17.10292,17.14293,17.18293,17.22627,17.26628,17.30629,17.34963,17.38963,17.43297,17.47298,17.51299,17.55633,17.59633,17.63634,17.67968,17.71969,17.75969,17.80303,17.84304,17.88638,17.92638,17.96639,18.00973,18.04974,18.08974,18.13308,18.17309,18.2131,18.25644,18.29644,18.33645,18.37979,18.4198,18.46314,18.50314,18.54315,18.58649,18.6265,18.6665,18.70984,18.74985,18.78985,18.8332,18.8732,18.91654,18.95655,18.99655,19.0399,19.0799,19.11991,19.16325,19.20325,19.24326,19.2866,19.32661,19.36661,19.40995,19.44996,19.4933,19.53331,19.57331,19.61665,19.65666,19.69667,19.74001,19.78001,19.82002,19.86336,19.90337,19.94671,19.98671,20.02672,20.07006,20.11006,20.15007,20.19341,20.23342,20.27342,20.31676,20.35677,20.39678,20.44012,20.48012,20.52346,20.56347,20.60347,20.64682,20.68682,20.72683,20.77017,20.81018,20.85018,20.89352,20.93353,20.97687,21.01687,21.05688,21.10022,21.14023,21.18023,21.22357,21.26358,21.30359,21.34693,21.38693,21.43027,21.47028,21.51028,21.55362,21.59363,21.63364,21.67698,21.71698,21.75699,21.80033,21.84034,21.88034,21.92368,21.96369,22.00703,22.04704,22.08704,22.13038,22.17039,22.21039,22.25373,22.29374,22.33375,22.37709,22.41709,22.46043,22.50044,22.54044,22.58378,22.62379,22.6638,22.70714,22.74714,22.78715,22.83049,22.8705,22.9105,22.95384,22.99385,23.03719,23.07719,23.1172,23.16054,23.20055,23.24055,23.28389,23.3239,23.3639,23.40724,23.44725,23.49059,23.5306,23.5706,23.61394,23.65395,23.69396,23.7373,23.7773,23.81731,23.86065,23.90065,23.94399,23.984,24.02401,24.06735,24.10735,24.14736,24.1907,24.23071,24.27071,24.31405,24.35406,24.39406,24.4374,24.47741,24.52075,24.56076,24.60076,24.6441,24.68411],"y":[2.117,1.9763,1.8954,1.863,1.863,1.8508,1.8579,1.8599,1.8731,1.8883,1.9095,1.9237,1.9399,1.9571,1.9743,1.9915,2.0077,2.0198,2.037,2.0522,2.0704,2.0907,2.1018,2.117,2.1241,2.1524,2.1676,2.1858,2.1989,2.2101,2.2283,2.2384,2.2566,2.2728,2.2829,2.2951,2.3082,2.3173,2.3275,2.3447,2.3588,2.3801,2.3892,2.3983,2.4104,2.4226,2.4317,2.4388,2.4489,2.455,2.4722,2.4782,2.4863,2.4995,2.5025,2.5106,2.5177,2.5288,2.5369,2.543,2.5551,2.5622,2.5734,2.5875,2.5987,2.6037,2.6098,2.6199,2.63,2.6371,2.6432,2.6543,2.6644,2.6705,2.6796,2.6877,2.6918,2.6978,2.7049,2.714,2.7191,2.7292,2.7343,2.7474,2.7484,2.7575,2.7666,2.7757,2.7828,2.7919,2.798,2.8031,2.8112,2.8203,2.8223,2.8334,2.8405,2.8476,2.8557,2.8678,2.8668,2.88,2.884,2.8891,2.8941,2.9032,2.9083,2.9184,2.9235,2.9306,2.9407,2.9447,2.9488,2.9549,2.9619,2.971,2.9781,2.9852,2.9933,2.9963,3.0024,3.0095,3.0176,3.0206,3.0277,3.0358,3.0399,3.0449,3.05,3.0561,3.0601,3.0702,3.0702,3.0783,3.0864,3.0935,3.1026,3.1056,3.1117,3.1208,3.1279,3.1319,3.1421,3.1461,3.1522,3.1562,3.1633,3.1684,3.1745,3.1836,3.1846,3.1917,3.2008,3.2058,3.2099,3.217,3.223,3.2301,3.2392,3.2443,3.2483,3.2574,3.2595,3.2696,3.2756,3.2767,3.2898,3.2858,3.3009,3.3009,3.309,3.3151,3.3192,3.3293,3.3323,3.3364,3.3445,3.3505,3.3566,3.3637,3.3667,3.3687,3.3789,3.3839,3.3981,3.4021,3.4062,3.4092,3.4112,3.4224,3.4284,3.4315,3.4396,3.4436,3.4527,3.4578,3.4588,3.4669,3.473,3.476,3.4811,3.4861,3.4912,3.4973,3.5043,3.5104,3.5165,3.5226,3.5276,3.5347,3.5398,3.5468,3.5509,3.5519,3.561,3.5661,3.5742,3.5772,3.5802,3.5873,3.5924,3.6015,3.6035,3.6106,3.6157,3.6248,3.6288,3.6339,3.6399,3.646,3.6541,3.6612,3.6622,3.6683,3.6743,3.6784,3.6824,3.6895,3.6946,3.7007,3.7067,3.7108,3.7189,3.7239,3.731,3.731,3.7411,3.7502,3.7523,3.7563,3.7634,3.7674,3.7725,3.7776,3.7887,3.7927,3.7958,3.8019,3.8089,3.813,3.8201,3.8261,3.8363,3.8403,3.8474,3.8494,3.8565,3.8616,3.8727,3.8747,3.8777,3.8848,3.896,3.895,3.9,3.9081,3.9152,3.9192,3.9223,3.9283,3.9385,3.9405,3.9435,3.9496,3.9577,3.9638,3.9628,3.9708,3.9779,3.985,3.9911,3.9972,4.0032,4.0093,4.0123,4.0184,4.0265,4.0326,4.0397,4.0467,4.0528,4.0619,4.066,4.07,4.0751,4.0842,4.0872,4.0984,4.1024,4.1044,4.1166,4.1226,4.1317,4.1348,4.1469,4.1489,4.156,4.1661,4.1692,4.1783,4.1844,4.1914,4.1965,4.2097,4.2097,4.2157,4.2238,4.2309,4.237,4.242,4.2501,4.2562,4.2613,4.2694,4.2765,4.2835,4.2876,4.2947,4.3028,4.3098,4.3139,4.324,4.3301,4.3402,4.3463,4.3453,4.3554,4.3635,4.3685,4.3827,4.3857,4.3948,4.4019,4.408,4.4181,4.4252,4.4323,4.4394,4.4495,4.4546,4.4616,4.4758,4.4809,4.4869,4.492,4.5062,4.5132,4.5224,4.5304,4.5365,4.5466,4.5547,4.5628,4.5709,4.576,4.5902,4.6225,4.6327,4.6397,4.6539,4.659,4.6721,4.6812,4.6903,4.7075,4.7136,4.7217,4.7349,4.7409,4.7541,4.7622,4.7713,4.7844,4.7976,4.8057,4.8138,4.8269,4.8361,4.8492,4.8583,4.8684,4.8816,4.8917,4.9039,4.918,4.9281,4.9423,4.9555,4.9666,4.9818,4.9949,5.0202,5.0364,5.0496,5.0658,5.0769,5.0931,5.1123,5.1295,5.1457,5.1649,5.1872,5.2095,5.2277,5.2489,5.2732,5.2975,5.3208,5.3491,5.3815,5.4108,5.4422,5.4776,5.5171,5.5505,5.5899,5.6274,5.676,5.7215,5.767,5.8197,5.8733,5.9259,5.9917,6.0494,6.1162,6.185,6.2497,6.3398,6.4116,6.4926,6.5736,6.6656,6.7506,6.8488,6.951,7.0502,7.1595,7.2738,7.3973,7.5086,7.627,7.7666,7.8982,8.0368,8.1937,8.3404,8.4932,8.6602,8.8261,8.989,9.1732,9.3493,9.5547,9.7399,9.9241,10.1497,10.3552,10.5616,10.7974,11.02,11.2517,11.4956,11.7354,12.0046,12.2536,12.5096,12.7868,13.056,13.3252,13.6278,13.9131,14.2046,14.5233,14.8289,15.1386,15.4786,15.7943,16.1384,16.4733,16.8012,17.1675,17.5187,17.8718,18.2594,18.6237,18.991,19.3968,19.7763,20.1932,20.5757,20.9714,21.4025,21.8022,22.2181,22.6684,23.0874,23.5083,23.9738,24.409,24.8886,25.3227,25.77,26.2578,26.702,27.1665,27.6644,28.1248,28.5873,29.0983,29.5759,30.0536,30.5868,31.0746,31.6119,32.1098,32.6026,33.1501,33.6692,34.1762,34.7338,35.2347,35.7548,36.3286,36.8558,37.4205,37.9487,38.482,39.0689,39.6113,40.1578,40.7416,41.284,41.8194,42.4306,42.975,43.5184,44.1276,44.672,45.2761,45.8428,46.4105,47.0157,47.5864,48.1268,48.7592,49.331,49.9057,50.5311,51.1019,51.7293,52.3172,52.9062,53.5234,54.1093,54.6791,55.3146,55.8873,56.4753,57.1138,57.6946,58.3352,58.9191,59.5161,60.1506,60.7305,61.3204,61.964,62.5499,63.1338,63.7612,64.335,64.927,65.5625,66.1504,66.7899,67.3576,67.9415,68.5811,69.1882],"a":20.3169,"b":20.2092,"k":-0.3708,"h":-0.133,"floor":-8},{"run":"Flax-1","oil":"Flax","t":[0,0.03334,0.07002,0.10336,0.1367,0.17338,0.20672,0.24006,0.27673,0.31007,0.34342,0.37676,0.41343,0.44677,0.48011,0.51679,0.55013,0.58347,0.62014,0.65348,0.68682,0.7235,0.75684,0.79018,0.82685,0.86019,0.89353,0.92687,0.96354,0.99688,1.03022,1.0669,1.10024,1.13358,1.17025,1.20359,1.23693,1.2736,1.30694,1.34028,1.37696,1.4103,1.44364,1.47698,1.51365,1.54699,1.58033,1.617,1.65034,1.68368,1.72035,1.75369,1.78703,1.8237,1.85704,1.89038,1.92706,1.96039,1.99373,2.03041,2.06374,2.09708,2.13042,2.1671,2.20043,2.23377,2.27045,2.30378,2.33712,2.3738,2.40714,2.44047,2.47715,2.51049,2.54382,2.5805,2.61384,2.64718,2.68051,2.71719,2.75053,2.78386,2.82054,2.85387,2.88721,2.92389,2.95723,2.99056,3.02724,3.06058,3.09391,3.13059,3.16393,3.19726,3.23394,3.26728,3.30062,3.33395,3.37063,3.40396,3.4373,3.47398,3.50732,3.54065,3.57733,3.61066,3.644,3.68068,3.71402,3.74735,3.78403,3.81737,3.8507,3.88404,3.92072,3.95405,3.98739,4.02407,4.0574,4.09074,4.12742,4.16075,4.19409,4.23077,4.2641,4.29744,4.33412,4.36745,4.40079,4.43413,4.4708,4.50414,4.53748,4.57415,4.60749,4.64083,4.6775,4.71084,4.74418,4.78085,4.81419,4.84753,4.8842,4.91754,4.95088,4.98755,5.02089,5.05423,5.08757,5.12424,5.15758,5.19092,5.22759,5.26093,5.29427,5.33094,5.36428,5.39762,5.43429,5.46763,5.50097,5.53764,5.57098,5.60432,5.63766,5.67433,5.70767,5.74101,5.77768,5.81102,5.84436,5.88103,5.91437,5.94771,5.98438,6.01772,6.05106,6.08773,6.12107,6.15441,6.18775,6.22442,6.25776,6.2911,6.32777,6.36111,6.39445,6.43112,6.46446,6.4978,6.53447,6.56781,6.60115,6.63782,6.67116,6.7045,6.74117,6.77451,6.80785,6.84119,6.87786,6.9112,6.94454,6.98121,7.01455,7.04788,7.08456,7.1179,7.15123,7.18791,7.22124,7.25458,7.29126,7.32459,7.35793,7.39127,7.42794,7.46128,7.49462,7.53129,7.56463,7.59797,7.63464,7.66798,7.70132,7.73799,7.77133,7.80467,7.84134,7.87468,7.90802,7.94469,7.97803,8.01137,8.04471,8.08138,8.11472,8.14806,8.18473,8.21807,8.25141,8.28808,8.32142,8.35476,8.39143,8.42477,8.45811,8.49478,8.52812,8.56146,8.5948,8.63147,8.66481,8.69814,8.73482,8.76816,8.80149,8.83817,8.87151,8.90484,8.94152,8.97486,9.00819,9.04487,9.0782,9.11154,9.14488,9.18155,9.21489,9.24823,9.2849,9.31824,9.35158,9.38825,9.42159,9.45493,9.4916,9.52494,9.55828,9.59495,9.62829,9.66163,9.6983,9.73164,9.76498,9.79832,9.83499,9.86833,9.90167,9.93834,9.97168,10.00502,10.04169,10.07503,10.10836,10.14504,10.17838,10.21171,10.24839,10.28172,10.31506,10.3484,10.38507,10.41841,10.45175,10.48842,10.52176,10.5551,10.59177,10.62511,10.65845,10.69512,10.72846,10.7618,10.79847,10.83181,10.86515,10.89849,10.93516,10.9685,11.00184,11.03851,11.07185,11.10518,11.14186,11.1752,11.20853,11.24521,11.27854,11.31188,11.34856,11.3819,11.41523,11.45191,11.48524,11.51858,11.55192,11.58859,11.62193,11.65527,11.69194,11.72528,11.75862,11.79529,11.82863,11.86197,11.89864,11.93198,11.96532,12.00199,12.03533,12.06867,12.10201,12.13868,12.17202,12.20536,12.24203,12.27537,12.3087,12.34538,12.37871,12.41205,12.44872,12.48206,12.5154,12.55207,12.58541,12.61875,12.65209,12.68876,12.7221,12.75544,12.79211,12.82545,12.85879,12.89546,12.9288,12.96214,12.99881,13.03215,13.06549,13.10216,13.1355,13.16884,13.20551,13.23885,13.27218,13.30552,13.3422,13.37553,13.40887,13.44554,13.47888,13.51222,13.5489,13.58223,13.61557,13.65224,13.68558,13.71892,13.75559,13.78893,13.82227,13.85561,13.89228,13.92562,13.95896,13.99563,14.02897,14.06231,14.09898,14.13232,14.16566,14.20233,14.23567,14.269,14.30568,14.33902,14.37235,14.40903,14.44236,14.4757,14.50904,14.54571,14.57905,14.61239,14.64906,14.6824,14.71574,14.75241,14.78575,14.81909,14.85576,14.8891,14.92244,14.95911,14.99245,15.02579,15.05912,15.0958,15.12914,15.16247,15.19915,15.23248,15.26582,15.3025,15.33583,15.36917,15.40584,15.43918,15.47252,15.50919,15.54253,15.57587,15.60921,15.64588,15.67922,15.71256,15.74923,15.78257,15.81591,15.85258,15.88592,15.91925,15.95593,15.98926,16.0226,16.05928,16.09261,16.12595,16.16262,16.19596,16.2293,16.26264,16.29931,16.33265,16.36599,16.40266,16.436,16.46934,16.50601,16.53935,16.57269,16.60936,16.6427,16.67604,16.71271,16.74605,16.77939,16.81273,16.8494,16.88274,16.91607,16.95275,16.98608,17.01942,17.0561,17.08943,17.12277,17.15945,17.19278,17.22612,17.26279,17.29613,17.32947,17.36281,17.39948,17.43282,17.46616,17.50283,17.53617,17.56951,17.60618,17.63952,17.67286,17.70953,17.74287,17.77621,17.81288,17.84622,17.87955,17.91623,17.94956,17.9829,18.01624,18.05291,18.08625,18.11959,18.15626,18.1896,18.22294,18.25961,18.29295,18.32629,18.36296,18.3963,18.42964,18.46631,18.49965,18.53299,18.56632,18.603,18.63633,18.66967,18.70634,18.73968,18.77302,18.80969,18.84303,18.87637,18.91304,18.94638,18.97972,19.01639,19.04973,19.08307,19.11974,19.15308,19.18642,19.21975,19.25643,19.28977,19.3231,19.35978,19.39311,19.42645,19.46313,19.49646,19.5298,19.56647,19.59981,19.63315,19.66982,19.70316,19.7365,19.76984,19.80651,19.83985,19.87319,19.90986,19.9432,19.97653,20.01321,20.04654,20.07988,20.11656,20.14989,20.18323,20.21991,20.25324,20.28658,20.31992,20.35659,20.38993,20.42327,20.45994,20.49328,20.52662,20.56329,20.59663],"y":[1.3832,1.2893,1.2264,1.209,1.2477,1.4151,1.7791,2.3676,3.1826,4.0082,4.8765,5.7709,6.7572,7.6535,8.5634,9.5681,10.4964,11.4333,12.4855,13.4505,14.4359,15.548,16.5731,17.6223,18.7955,19.8796,20.9811,22.0884,23.3371,24.485,25.6427,26.9417,28.1313,29.3257,30.646,31.8423,33.0494,34.3638,35.5738,36.7953,38.1291,39.3439,40.5383,41.7541,43.0763,44.2843,45.4739,46.797,48.0108,49.2121,50.5246,51.7248,52.9144,54.2086,55.3875,56.5277,57.818,58.9863,60.1566,61.4255,62.5938,63.7031,64.8772,66.152,67.3096,68.4615,69.7217,70.8659,71.9993,73.2605,74.3601,75.4713,76.718,77.8399,78.9636,80.1958,81.2954,82.3785,83.483,84.6948,85.7857,86.8737,88.0768,89.1328,90.2073,91.3833,92.4625,93.5002,94.6482,95.6877,96.7225,97.8385,98.8442,99.8663,100.9495,101.9629,102.9579,103.9239,104.9722,105.9034,106.8452,107.7415,108.6727,109.539,110.503,111.3955,112.3024,113.2936,114.218,115.0088,116.0009,116.8895,117.7868,118.6792,119.6481,120.528,121.4108,122.338,123.1947,124.0455,124.9873,125.843,126.6705,127.5727,128.4167,129.2675,130.1793,131.005,131.8413,132.6698,133.5497,134.3492,135.1429,136.0354,136.8078,137.5734,138.4223,139.1754,139.9236,140.7764,141.5459,142.3076,143.1265,143.7963,144.4536,145.1611,145.7777,146.4282,147.0825,147.792,148.3892,148.9787,149.6582,150.2902,150.8652,151.4895,151.9957,152.5804,153.2163,153.7816,154.3091,154.9189,155.5549,156.1995,156.85,157.5479,158.178,158.8062,159.4741,160.079,160.6782,161.379,162.0178,162.6392,163.3371,163.9527,164.5548,165.2043,165.8373,166.4655,167.0501,167.6987,168.293,168.9057,169.5581,170.1263,170.7002,171.3633,171.9653,172.5529,173.1772,173.7144,174.1877,174.8101,175.3802,175.8797,176.4992,177.0335,177.5668,178.0692,178.6606,179.0903,179.5191,180.1416,180.6787,181.1598,181.759,182.2826,182.7695,183.3561,183.8536,184.2775,184.748,185.231,185.7111,186.1815,186.6984,187.1485,187.5744,188.0883,188.5607,189.0292,189.5083,189.848,190.1975,190.5324,190.8402,191.119,191.4819,191.8275,192.0801,192.3986,192.6977,192.9164,193.1942,193.5572,193.8524,194.137,194.5164,194.922,195.3111,195.7496,196.1397,196.5317,196.9924,197.4193,197.88,198.3679,198.8054,199.1964,199.5671,199.9979,200.4073,200.7306,201.1865,201.6037,202.0063,202.4864,202.8998,203.2753,203.678,204.0797,204.3981,204.8569,205.1251,205.49,205.9197,206.3108,206.6602,207.0464,207.4481,207.8101,208.1741,208.5854,208.9726,209.3482,209.7354,210.0538,210.44,210.832,211.1698,211.5125,211.8348,212.2007,212.525,212.855,213.2383,213.5974,213.9072,214.2557,214.5334,214.8916,215.2575,215.5604,215.9466,216.389,216.7307,217.054,217.3337,217.4673,217.5834,217.7518,217.9222,218.1051,218.2678,218.3887,218.561,218.6811,218.8737,219.0228,219.1757,219.3761,219.6035,219.8378,220.1223,220.4418,220.7176,220.9877,221.2897,221.5868,221.8733,222.2344,222.5606,222.8693,223.2391,223.4918,223.8208,224.1644,224.4113,224.722,225.0588,225.3434,225.6396,225.9561,226.2678,226.5979,226.8873,227.1641,227.4303,227.6839,227.9084,228.194,228.5076,228.8019,229.0574,229.3246,229.6178,229.9131,230.1976,230.4783,230.7803,231.0668,231.3398,231.6611,231.9506,232.2274,232.51,232.7646,233.0173,233.2767,233.4731,233.7103,233.9958,234.2533,234.4953,234.7286,234.9899,235.1051,235.2193,235.3326,235.4468,235.5213,235.5813,235.6607,235.7594,235.8427,235.8872,235.9675,236.0585,236.1079,236.2182,236.4157,236.6083,236.7593,237.0294,237.2888,237.5598,237.7979,238.0428,238.3119,238.5655,238.8307,239.0785,239.3302,239.5876,239.8606,240.1093,240.3359,240.573,240.8169,241.0947,241.3289,241.51,241.7171,241.8923,242.1546,242.4101,242.6231,242.8864,243.1177,243.2794,243.4875,243.7265,243.8921,244.106,244.3363,244.5667,244.7893,244.9665,245.1969,245.4456,245.6731,245.8909,246.1725,246.3777,246.5674,246.7968,247.0224,247.244,247.457,247.6893,247.8529,248.0958,248.2168,248.3223,248.514,248.7114,248.8586,249.0609,249.3058,249.5206,249.7007,249.9417,250.2156,250.4295,250.6667,250.7944,250.9551,251.1971,251.4043,251.5669,251.7527,251.9472,252.1592,252.3577,252.5445,252.6829,252.7477,252.7381,252.74,252.7603,252.7855,252.7739,252.7894,252.8,252.8271,252.862,252.8736,252.9133,252.9442,252.9733,253.0807,253.1804,253.3498,253.5695,253.7467,253.9287,254.0467,254.2674,254.4746,254.7107,254.9489,255.1579,255.4115,255.5974,255.7377,256,256.243,256.3804,256.6011,256.8121,257.0096,257.1858,257.4065,257.5584,257.7588,257.9553,258.1614,258.3599,258.5854,258.8177,259.0016,259.2097,259.4275,259.625,259.806,259.9889,260.1631,260.3625,260.5532,260.741,260.9162,261.1214,261.3004,261.4738,261.678,261.8183,262.0023,262.16,262.3275,262.4959,262.6546,262.7776,262.8434,263.035,263.2335,263.3825,263.5751,263.7658,263.9294,264.1114,264.2633,264.4405,264.6389,264.816,264.9303,265.0522,265.1509,265.2603,265.4287,265.5904,265.7501,265.8769,265.9282,265.9021,266.0279,266.0182,266.2069,266.2825,266.4257,266.5545,266.6948,266.8362,266.9726,267.0481,267.1962,267.3559,267.5079,267.6531,267.8224,268.0083,268.1487,268.29,268.4129,268.5562,268.6588,268.7759,268.9201,269.0585,269.2192,269.3479,269.4651,269.5115,269.4118,269.3363,269.2831,269.2676,269.2502,269.194,269.1418,269.0943,269.0692,269.0498,269.0692,268.6549,268.7449,268.8756,269.013,269.0702,269.2182,269.3934,269.4612,269.286,269.4428,269.6035,269.7603,269.8784,270.0294,270.2297,270.3594],"a":0.3745,"b":null,"k":-0.737,"h":-0.89431,"floor":-60},{"run":"Sunflower-1","oil":"Sunflower","t":[0,0.03001,0.05668,0.08669,0.11336,0.14337,0.17338,0.20005,0.23006,0.25673,0.28674,0.31674,0.34342,0.37342,0.4001,0.4301,0.46011,0.48678,0.51679,0.54346,0.57347,0.60347,0.63015,0.66015,0.68682,0.71683,0.7435,0.77351,0.80352,0.83019,0.86019,0.88686,0.91687,0.94688,0.97355,1.00355,1.03022,1.06023,1.09024,1.11691,1.14691,1.17358,1.20359,1.23359,1.26027,1.29027,1.31694,1.34695,1.37695,1.40362,1.43363,1.4603,1.49031,1.52031,1.54698,1.57699,1.60366,1.63366,1.66367,1.69034,1.72035,1.74702,1.77702,1.80703,1.8337,1.8637,1.89037,1.92038,1.95038,1.97706,2.00706,2.03373,2.06374,2.09374,2.12041,2.15042,2.17709,2.20709,2.23376,2.26377,2.29377,2.32044,2.35045,2.37712,2.40712,2.43713,2.4638,2.4938,2.52047,2.55048,2.58048,2.60716,2.63716,2.66383,2.69384,2.72384,2.75051,2.78052,2.80719,2.83719,2.8672,2.89387,2.92387,2.95054,2.98055,3.01055,3.03722,3.06723,3.0939,3.1239,3.15391,3.18058,3.21058,3.23725,3.26726,3.29726,3.32393,3.35394,3.38061,3.41061,3.44062,3.46729,3.49729,3.52396,3.55397,3.58064,3.61064,3.64065,3.66732,3.69732,3.72399,3.754,3.784,3.81067,3.84068,3.86735,3.89735,3.92736,3.95403,3.98403,4.0107,4.04071,4.07071,4.09738,4.12739,4.15406,4.18406,4.21406,4.24074,4.27074,4.29741,4.32741,4.35742,4.38409,4.41409,4.44076,4.47077,4.50077,4.52744,4.55745,4.58412,4.61412,4.64413,4.6708,4.7008,4.72747,4.75748,4.78748,4.81415,4.84416,4.87083,4.90083,4.93084,4.95751,4.98751,5.01418,5.04419,5.07086,5.10086,5.13087,5.15754,5.18754,5.21421,5.24422,5.27422,5.30089,5.3309,5.35757,5.38757,5.41758,5.44425,5.47425,5.50092,5.53093,5.56093,5.5876,5.6176,5.64428,5.67428,5.70428,5.73096,5.76096,5.78763,5.81763,5.84764,5.87431,5.90431,5.93098,5.96099,5.99099,6.01766,6.04767,6.07434,6.10434,6.13435,6.16102,6.19102,6.21769,6.2477,6.2777,6.30437,6.33437,6.36105,6.39105,6.42105,6.44772,6.47773,6.5044,6.5344,6.56108,6.59108,6.62108,6.64775,6.67776,6.70443,6.73443,6.76444,6.79111,6.82111,6.84778,6.87779,6.90779,6.93446,6.96447,6.99114,7.02114,7.05115,7.07782,7.10782,7.13449,7.1645,7.1945,7.22117,7.25118,7.27785,7.30785,7.33786,7.36453,7.39453,7.4212,7.45121,7.48121,7.50788,7.53788,7.56456,7.59456,7.62456,7.65124,7.68124,7.70791,7.73792,7.76792,7.79459,7.8246,7.85126,7.88127,7.90794,7.93794,7.96795,7.99462,8.02462,8.0513,8.0813,8.1113,8.13797,8.16798,8.19465,8.22465,8.25466,8.28133,8.31133,8.338,8.36801,8.39801,8.42468,8.45469,8.48136,8.51136,8.54137,8.56804,8.59804,8.62471,8.65472,8.68472,8.71139,8.7414,8.76807,8.79807,8.82808,8.85475,8.88475,8.91142,8.94142,8.97143,8.9981,9.0281,9.05478,9.08478,9.11478,9.14145,9.17146,9.19813,9.22813,9.25814,9.28481,9.31481,9.34148,9.37149,9.39816,9.42816,9.45817,9.48484,9.51484,9.54151,9.57152,9.60152,9.62819,9.6582,9.68487,9.71487,9.74488,9.77155,9.80155,9.82822,9.85823,9.88823,9.9149,9.94491,9.97158,10.00158,10.03159,10.05826,10.08826,10.11493,10.14494,10.17494,10.20161,10.23162,10.25829,10.28829,10.3183,10.34497,10.37497,10.40164,10.43165,10.46165,10.48832,10.51833,10.545,10.575,10.605,10.63168,10.66168,10.68835,10.71835,10.74502,10.77503,10.80503,10.8317,10.86171,10.88838,10.91838,10.94839,10.97506,11.00506,11.03173,11.06174,11.09174,11.11841,11.14842,11.17509,11.20509,11.2351,11.26177,11.29177,11.31844,11.34845,11.37845,11.40512,11.43513,11.4618,11.4918,11.5218,11.54848,11.57848,11.60515,11.63515,11.66516,11.69183,11.72183,11.7485,11.77851,11.80851,11.83518,11.86519,11.89186,11.92186,11.95187,11.97854,12.00854,12.03521,12.06522,12.09522,12.12189,12.1519,12.17857,12.20857,12.23524,12.26525,12.29525,12.32192,12.35193,12.3786,12.4086,12.43861,12.46528,12.49528,12.52195,12.55196,12.58196,12.60863,12.63863,12.6653,12.69531,12.72531,12.75198,12.78199,12.80866,12.83866,12.86867,12.89534,12.92534,12.95201,12.98202,13.01202,13.03869,13.0687,13.09537,13.12537,13.15538,13.18205,13.21205,13.23872,13.26873,13.29873,13.3254,13.35541,13.38208,13.41208,13.44209,13.46876,13.49876,13.52543,13.55543,13.58544,13.61211,13.64211,13.66878,13.69879,13.72546,13.75546,13.78547,13.81214,13.84214,13.86881,13.89882,13.92882,13.95549,13.9855,14.01217,14.04217,14.07218,14.09885,14.12885,14.15552,14.18553,14.21553,14.2422,14.27221,14.29888,14.32888,14.35889,14.38556,14.41556,14.44223,14.47224,14.50224,14.52891,14.55891,14.58558,14.61559,14.64559,14.67226,14.70227,14.72894,14.75894,14.78895,14.81562,14.84562,14.87229,14.9023,14.9323,14.95897,14.98898,15.01565,15.04565,15.07232,15.10233,15.13233,15.159,15.18901,15.21568,15.24568,15.27568,15.30236,15.33236,15.35903,15.38903,15.41904,15.44571,15.47571,15.50238,15.53239,15.56239,15.58906,15.61907,15.64574,15.67574,15.70575,15.73242,15.76242,15.78909,15.8191,15.8491,15.87577,15.90578,15.93245,15.96245,15.99246,16.01912,16.04913,16.0758,16.1058,16.13581,16.16248,16.19248,16.21915,16.24916,16.27916,16.30583,16.33584,16.36251,16.39251,16.42252,16.44919,16.47919,16.50586,16.53587,16.56254,16.59254,16.62255,16.64922,16.67922,16.70589,16.7359,16.7659,16.79257,16.82258,16.84924,16.87925,16.90925,16.93592,16.96593,16.9926,17.0226,17.05261,17.07928,17.10928,17.13595,17.16596],"y":[1.3051,1.2264,1.1811,1.1348,1.1004,1.0728,1.0492,1.0374,1.0226,1.0138,1.0108,1.0108,1.0089,1.0108,1.0089,1.0167,1.0226,1.0374,1.0551,1.0718,1.1043,1.1476,1.1929,1.2559,1.3277,1.4104,1.502,1.6053,1.7273,1.8405,1.9695,2.0964,2.2451,2.4016,2.5453,2.7165,2.8691,3.0472,3.2392,3.4212,3.6358,3.8366,4.0787,4.3287,4.5728,4.8681,5.1506,5.4921,5.8671,6.2116,6.6269,7.0137,7.4635,7.936,8.3848,8.8986,9.371,9.9123,10.4783,10.9881,11.5787,12.121,12.745,13.3867,13.9782,14.6554,15.2676,15.9832,16.7095,17.367,18.118,18.7991,19.5756,20.365,21.0746,21.8788,22.6061,23.4299,24.1622,25.0106,25.8728,26.6445,27.5175,28.3098,29.2035,30.1149,30.9309,31.862,32.6966,33.6631,34.6375,35.5175,36.5056,37.3944,38.3993,39.4101,40.3078,41.3324,42.2467,43.2763,44.2969,45.2261,46.2723,47.2034,48.2585,49.3107,50.2506,51.3225,52.2811,53.353,54.4337,55.3894,56.4504,57.3825,58.4602,59.5252,60.473,61.5478,62.5005,63.5606,64.6265,65.5773,66.6826,67.596,68.6452,69.6196,70.7239,71.8282,72.8203,73.9374,74.9266,76.0487,77.1756,78.151,79.277,80.2868,81.398,82.522,83.521,84.6244,85.6195,86.7454,87.8753,88.8655,89.9954,90.9924,92.1145,93.2168,94.205,95.3093,96.2975,97.393,98.4904,99.4756,100.5564,101.5357,102.641,103.7365,104.7177,105.8191,106.7955,107.8693,108.9667,109.95,111.0336,112.0051,113.0897,114.1822,115.1507,116.2226,117.1891,118.2649,119.3446,120.2895,121.3849,122.3515,123.4361,124.3928,125.4705,126.5768,127.5434,128.6438,129.6368,130.7549,131.875,132.8612,133.9882,134.9911,136.1043,137.2382,138.2313,139.3681,140.3799,141.5177,142.6692,143.6466,144.7716,145.7666,146.8936,148.0206,149.0304,150.1584,151.1652,152.3158,153.4349,154.4467,155.5313,156.5186,157.6229,158.742,159.7006,160.7921,161.7744,162.862,163.9201,164.8767,165.9574,166.921,167.9771,169.0598,170.0066,171.0352,171.982,173.0421,174.0883,175.0155,176.0647,176.983,178.0036,178.9121,179.9573,180.9662,181.8599,182.8934,183.8018,184.8195,185.8274,186.7181,187.7339,188.6364,189.5734,190.4947,191.3096,192.2378,193.0675,193.9179,194.85,195.6787,196.596,197.407,198.3115,199.1885,199.9985,200.9316,201.7387,202.5812,203.4926,204.2259,205.1215,205.8765,206.779,207.7061,208.53,209.4621,210.2888,211.2061,212.1185,212.965,213.902,214.7218,215.6608,216.6126,217.4561,218.4079,219.2602,220.1736,221.0348,221.9856,222.8734,223.6932,224.6165,225.4531,226.4078,227.3163,228.1509,229.0584,229.894,230.7965,231.7217,232.5406,233.457,234.2089,235.1075,236.0308,236.8438,237.7119,238.3998,239.3014,240.1626,240.8723,241.6852,242.4588,243.2748,244.0258,244.7118,245.4982,246.2295,247.0336,247.8141,248.4765,249.2462,249.9007,250.6566,251.4224,252.0149,252.7944,253.4509,254.2078,254.9647,255.6271,256.3781,257.0542,257.7767,258.5208,259.1851,259.9203,260.4892,261.193,261.8495,262.567,263.2914,263.9252,264.6152,265.2559,265.9823,266.6457,267.2992,268.0738,268.7333,269.4892,270.2343,270.9262,271.7234,272.4281,273.1978,273.9212,274.5994,275.3533,275.9999,276.7716,277.562,278.246,279.0058,279.6535,280.4399,281.2036,281.9015,282.6928,283.3355,284.0895,284.7902,285.4644,286.1948,286.8463,287.5648,288.3286,288.9841,289.6996,290.3177,291.0264,291.7498,292.4044,293.0805,293.6278,294.1888,294.7803,295.3738,296.0293,296.5864,297.1248,297.6878,298.111,298.7114,299.1897,299.7685,300.2862,300.9053,301.5106,302.0381,302.5638,303.11,303.672,304.2192,304.6976,305.1966,305.6985,306.2468,306.8757,307.4161,308.0923,308.6779,309.3462,309.9594,310.5213,311.1896,311.8078,312.4672,313.0804,313.6571,314.3275,314.9091,315.5774,316.2093,316.8067,317.4721,318.0459,318.6493,319.2998,319.8667,320.5144,321.0626,321.6925,322.3707,322.9622,323.5577,324.1305,324.7555,325.2201,325.7811,326.3008,326.8086,327.3333,327.6856,328.2259,328.7191,329.1364,329.6206,330.0793,330.596,331.0704,331.537,332.0291,332.4208,332.8991,333.3046,333.7299,334.1619,334.598,335.0891,335.595,336.0222,336.5596,337.092,337.6737,338.2426,338.7958,339.3548,339.8597,340.405,340.9769,341.4867,342.0408,342.5201,343.0811,343.6471,344.1254,344.6992,345.2022,345.7288,346.2691,346.6372,347.214,347.6894,348.1943,348.7386,349.2711,349.7967,350.276,350.8469,351.3242,351.7582,352.1677,352.5506,352.9886,353.3832,353.8557,354.2592,354.5624,354.9846,355.3261,355.7425,356.1529,356.5004,356.8813,357.2051,357.5634,357.895,358.1559,358.5938,359.0063,359.4865,360.0132,360.4669,360.9698,361.3832,361.7346,362.2503,362.6637,363.1844,363.6086,364.0712,364.5603,365.0298,365.5692,366.0475,366.5681,367.1026,367.5662,368.0711,368.5406,369.079,369.575,370.015,370.5052,370.889,371.4146,371.8487,372.3408,372.8053,373.264,373.7955,374.2364,374.7414,375.2158,375.5957,376.0336,376.3594,376.7925,377.1754,377.5169,377.8949,378.2295,378.5898,378.95,379.2315,379.576,379.8673,380.2167,380.4549,380.7364,381.075,381.3988,381.7846,382.136,382.4126,382.7738,383.0514,383.3879,383.7118,383.9883,384.3122,384.507,384.9165,385.3584,385.7511,386.1408,386.5208,386.9687,387.2816,387.6566,388.0533,388.4106,388.8731,389.3111,389.755,390.2147,390.6143,391.0464,391.4046,391.8968,392.3239,392.7117,393.1654,393.5936,394.0591,394.4735,394.8249,395.2491,395.6969,396.1162,396.5434,396.9292,397.3583,397.7501,398.2501,398.7077,399.0286,399.3455,399.631,400.0148],"a":1.8711,"b":null,"k":-0.7015,"h":-0.7906,"floor":-60},{"run":"Avo-old-1","oil":"Avo-old","t":[0,0.03334,0.07002,0.10336,0.13671,0.17339,0.20673,0.24007,0.27675,0.31009,0.34344,0.38011,0.41346,0.4468,0.48348,0.51682,0.55016,0.58684,0.62018,0.65352,0.6902,0.72354,0.75688,0.79356,0.8269,0.86024,0.89692,0.93026,0.9636,0.99695,1.03362,1.06696,1.10031,1.13698,1.17032,1.20366,1.24034,1.27368,1.30702,1.3437,1.37704,1.41038,1.44706,1.4804,1.51374,1.55041,1.58375,1.6171,1.65377,1.68711,1.72045,1.75713,1.79047,1.82381,1.86048,1.89383,1.92717,1.96384,1.99718,2.03052,2.0672,2.10054,2.13388,2.17055,2.20389,2.23723,2.27391,2.30725,2.34059,2.37726,2.4106,2.44395,2.48062,2.51396,2.5473,2.58398,2.61732,2.65066,2.68733,2.72067,2.75401,2.79069,2.82403,2.85737,2.89071,2.92738,2.96072,2.99406,3.03074,3.06408,3.09742,3.13409,3.16743,3.20077,3.23745,3.27079,3.30413,3.3408,3.37414,3.40748,3.44416,3.4775,3.51084,3.54751,3.58085,3.61419,3.65086,3.6842,3.71754,3.75422,3.78756,3.8209,3.85757,3.89091,3.92425,3.96093,3.99427,4.02761,4.06428,4.09762,4.13096,4.16764,4.20098,4.23432,4.27099,4.30433,4.33767,4.37434,4.40768,4.44102,4.4777,4.51104,4.54438,4.58105,4.61439,4.64773,4.68441,4.71774,4.75108,4.78442,4.8211,4.85444,4.88778,4.92445,4.95779,4.99113,5.02781,5.06115,5.09449,5.13116,5.1645,5.19784,5.23451,5.26785,5.30119,5.33787,5.37121,5.40455,5.44122,5.47456,5.5079,5.54458,5.57792,5.61125,5.64793,5.68127,5.71461,5.75128,5.78462,5.81796,5.85464,5.88798,5.92132,5.95799,5.99133,6.02467,6.06134,6.09468,6.12802,6.1647,6.19804,6.23138,6.26805,6.30139,6.33473,6.3714,6.40474,6.43808,6.47476,6.5081,6.54144,6.57477,6.61145,6.64479,6.67813,6.7148,6.74814,6.78148,6.81815,6.85149,6.88483,6.92151,6.95485,6.98819,7.02486,7.0582,7.09154,7.12821,7.16155,7.19489,7.23157,7.26491,7.29825,7.33492,7.36826,7.4016,7.43827,7.47161,7.50495,7.54163,7.57497,7.60831,7.64498,7.67832,7.71166,7.74833,7.78167,7.81501,7.85168,7.88502,7.91836,7.95504,7.98838,8.02172,8.05839,8.09173,8.12507,8.16174,8.19508,8.22842,8.2651,8.29844,8.33178,8.36845,8.40179,8.43513,8.46847,8.50514,8.53848,8.57182,8.6085,8.64184,8.67518,8.71185,8.74519,8.77853,8.8152,8.84854,8.88188,8.91855,8.95189,8.98523,9.02191,9.05525,9.08859,9.12526,9.1586,9.19194,9.22861,9.26195,9.29529,9.33196,9.3653,9.39864,9.43532,9.46866,9.502,9.53867,9.57201,9.60535,9.64202,9.67536,9.7087,9.74538,9.77872,9.81206,9.84873,9.88207,9.91541,9.95208,9.98542,10.01876,10.05543,10.08877,10.12211,10.15879,10.19213,10.22547,10.26214,10.29548,10.32882,10.36216,10.39883,10.43217,10.46551,10.50219,10.53552,10.56886,10.60554,10.63888,10.67222,10.70889,10.74223,10.77557,10.81224,10.84558,10.87892,10.9156,10.94894,10.98227,11.01895,11.05229,11.08563,11.1223,11.15564,11.18898,11.22565,11.25899,11.29233,11.329,11.36234,11.39568,11.43236,11.4657,11.49904,11.53571,11.56905,11.60239,11.63906,11.6724,11.70574,11.74242,11.77576,11.80909,11.84577,11.87911,11.91245,11.94912,11.98246,12.0158,12.05247,12.08581,12.11915,12.15582,12.18916,12.2225,12.25584,12.29252,12.32586,12.3592,12.39587,12.42921,12.46255,12.49922,12.53256,12.5659,12.60257,12.63591,12.66925,12.70593,12.73927,12.77261,12.80928,12.84262,12.87596,12.91263,12.94597,12.97931,13.01598,13.04932,13.08266,13.11934,13.15268,13.18602,13.22269,13.25603,13.28937,13.32604,13.35938,13.39272,13.42939,13.46273,13.49607,13.53274,13.56608,13.59942,13.6361,13.66944,13.70278,13.73945,13.77279,13.80613,13.8428,13.87614,13.90948,13.94615,13.97949,14.01283,14.04951,14.08285,14.11618,14.14952,14.1862,14.21954,14.25288,14.28955,14.32289,14.35623,14.3929,14.42624,14.45958,14.49626,14.52959,14.56293,14.59961,14.63295,14.66629,14.70296,14.7363,14.76964,14.80631,14.83965,14.87299,14.90966,14.943,14.97634,15.01302,15.04636,15.07969,15.11637,15.14971,15.18305,15.21972,15.25306,15.2864,15.32307,15.35641,15.38975,15.42642,15.45976,15.4931,15.52978,15.56312,15.59646,15.63313,15.66647,15.69981,15.73648,15.76982,15.80316,15.83983,15.87317,15.90651,15.93985,15.97652,16.00986,16.0432,16.07988,16.11322,16.14656,16.18323,16.21657,16.24991,16.28658,16.31992,16.35326,16.38993,16.42327,16.45661,16.49329,16.52662,16.55996,16.59664,16.62998,16.66332,16.69999,16.73333,16.76667,16.80334,16.83668,16.87002,16.90669,16.94003,16.97337,17.01005,17.04339,17.07672,17.1134,17.14674,17.18008,17.21675,17.25009,17.28343,17.3201,17.35344,17.38678,17.42346,17.45679,17.49013,17.52681,17.56015,17.59349,17.63016,17.6635,17.69684,17.73351,17.76685,17.80019,17.83353,17.8702,17.90354,17.93688,17.97356,18.0069,18.04023,18.07691,18.11025,18.14359,18.18026,18.2136,18.24694,18.28361,18.31695,18.35029,18.38696,18.4203,18.45364,18.49032,18.52366,18.557,18.59367,18.62701,18.66035,18.69702,18.73036,18.7637,18.80037,18.83371,18.86705,18.90373,18.93706,18.9704,19.00708,19.04042,19.07376,19.11043,19.14377,19.17711,19.21378,19.24712,19.28046,19.31713,19.35047,19.38381,19.42049,19.45382,19.48717,19.52384,19.55718,19.59052,19.62719,19.66053,19.69387,19.72721,19.76388,19.79722,19.83056,19.86723,19.90057,19.93391,19.97059,20.00392,20.03726,20.07394,20.10728,20.14062,20.17729,20.21063,20.24397,20.28064,20.31398,20.34732,20.38399,20.41733,20.45067,20.48735,20.52069,20.55402,20.5907,20.62404],"y":[1.8873,1.8401,2.1194,2.93,3.8239,4.4557,4.8183,5.0534,5.2633,5.429,5.5847,5.7605,5.9303,6.1121,6.3501,6.7027,7.0763,7.1617,7.2391,7.3184,7.4028,7.4831,7.5615,7.6509,7.7363,7.8206,7.9181,8.0065,8.1029,8.1923,8.2977,8.3952,8.4996,8.6101,8.7186,8.8261,8.9506,9.0672,9.1746,9.3042,9.4318,9.5553,9.701,9.8386,9.9752,10.1339,10.2846,10.4412,10.618,10.7888,10.9716,11.1775,11.3814,11.5944,11.8455,12.0644,12.2834,12.5315,12.7726,13.0207,13.2919,13.539,13.8001,14.1015,14.3897,14.6871,15.0296,15.361,15.7016,16.0903,16.4569,16.8316,17.2605,17.6653,18.0841,18.5482,18.9851,19.4291,19.9313,20.4064,20.8905,21.436,21.9412,22.4605,22.9868,23.5714,24.1178,24.6703,25.2931,25.8696,26.4572,27.1181,27.7218,28.3295,29.0206,29.6544,30.2872,30.9993,31.6542,32.3081,33.0434,33.7204,34.4024,35.1467,35.8287,36.5268,37.2912,37.9913,38.6884,39.4759,40.1921,40.9324,41.7279,42.444,43.1773,43.9728,44.7151,45.4494,46.264,47.0063,47.7596,48.5762,49.3195,50.0508,50.8794,51.6318,52.3811,53.2088,53.9701,54.7315,55.5702,56.3215,57.0829,57.9146,58.674,59.4333,60.2751,61.0374,61.7908,62.5501,63.3818,64.1452,64.9086,65.7322,66.4946,67.252,68.0807,68.833,69.5873,70.425,71.1874,71.9498,72.7754,73.5368,74.2922,75.1228,75.8521,76.6185,77.4512,78.2025,78.9568,79.7674,80.5147,81.2721,82.0957,82.8421,83.6004,84.411,85.1593,85.8976,86.7092,87.4444,88.1777,88.9983,89.7296,90.4508,91.2674,91.9896,92.7309,93.5214,94.2576,94.9929,95.7673,96.4976,97.2318,98.0032,98.7204,99.4376,100.2261,100.9272,101.6233,102.3163,103.0817,103.7748,104.4498,105.2152,105.8721,106.5662,107.3306,108.0256,108.7127,109.462,110.138,110.8271,111.5372,112.2293,112.9033,113.6435,114.3155,114.9925,115.7388,116.4058,117.0868,117.8271,118.5141,119.1509,119.8772,120.5501,121.2171,121.9473,122.6042,123.2521,123.9723,124.6222,125.2741,125.9812,126.6261,127.2709,127.9881,128.6299,129.2738,129.9819,130.6238,131.2566,131.9356,132.5684,133.1992,133.8973,134.521,135.1518,135.8238,136.4466,137.0583,137.7353,138.342,138.9698,139.5905,140.2705,140.8551,141.4297,142.0695,142.6732,143.2658,143.9046,144.5093,145.0618,145.7317,146.3274,146.921,147.5448,148.1444,148.6969,149.3397,149.9253,150.529,151.1688,151.7544,152.348,152.9798,153.5132,154.0737,154.7025,155.2368,155.7843,156.39,156.9273,157.4969,158.0905,158.6299,159.1944,159.784,160.3133,160.8688,161.4745,162.043,162.5944,163.1821,163.7265,164.2709,164.8535,165.3828,165.9352,166.5349,167.0612,167.5825,168.1611,168.6925,169.2198,169.7753,170.2996,170.8209,171.3472,171.9077,172.4079,172.9152,173.4787,173.9809,174.457,175.0225,175.5077,176.04,176.5844,177.0465,177.5678,178.074,178.5562,179.0092,179.5556,180.0668,180.5721,181.1386,181.6449,182.1561,182.6895,183.1736,183.6618,184.2223,184.6994,185.1946,185.6526,186.1398,186.5737,187.1031,187.55,187.9428,188.4329,188.8608,189.3349,189.8623,190.3243,190.7592,191.2484,191.6733,192.1414,192.6486,193.0926,193.5376,194.0348,194.4848,194.9398,195.443,195.8528,196.2395,196.7046,197.1777,197.6317,198.0375,198.4292,198.826,199.2609,199.7199,200.1288,200.5667,201.0539,201.4958,201.9307,202.3908,202.8317,203.2275,203.6966,204.1375,204.5453,205.0134,205.4282,205.8712,206.3031,206.721,207.1328,207.6129,207.9996,208.4205,208.8886,209.2903,209.7202,210.1612,210.5811,210.9748,211.4168,211.7975,212.1661,212.5779,212.9907,213.3684,213.7973,214.1941,214.5898,214.9775,215.305,215.6957,216.0875,216.4943,216.894,217.329,217.7418,218.0994,218.5293,218.9331,219.2726,219.6834,220.0551,220.4629,220.8807,221.2413,221.6441,222.0298,222.4557,222.8213,223.1909,223.5827,223.9654,224.345,224.7569,225.1225,225.5002,225.8789,226.2555,226.6041,226.9727,227.255,227.6035,227.9912,228.2574,228.6381,228.9876,229.3422,229.6918,230.0463,230.3567,230.6942,231.0909,231.4505,231.8041,232.2059,232.5725,232.9331,233.3299,233.6824,233.9998,234.3896,234.7532,235.0746,235.4563,235.8219,236.1715,236.5582,236.9117,237.2231,237.5918,237.9393,238.2828,238.6605,238.9809,239.3063,239.6187,239.9512,240.2656,240.5679,240.9014,241.261,241.4981,241.8366,242.1911,242.5327,242.9173,243.1886,243.522,243.8977,244.2081,244.5395,244.9202,245.2336,245.5862,245.9829,246.3224,246.673,246.9904,247.2777,247.6373,247.9004,248.245,248.5503,248.9149,249.2404,249.5829,249.9575,250.2509,250.503,250.8314,251.0956,251.414,251.7636,252.092,252.3803,252.7057,253.0071,253.3224,253.6821,254.0045,254.2948,254.6433,254.9406,255.2259,255.5584,255.8406,256.146,256.4182,256.6844,256.9887,257.1976,257.5502,257.8716,258.1609,258.5225,258.8379,259.1101,259.4526,259.7439,260.0453,260.3737,260.6982,261.0216,261.3571,261.6664,261.9828,262.2952,262.5152,262.8286,263.1681,263.4835,263.7989,264.0932,264.3925,264.6476,264.955,265.173,265.4854,265.8148,266.0438,266.3452,266.6867,266.9287,267.2261,267.4641,267.7715,268.0728,268.4043,268.7056,268.9899,269.3234,269.6136,269.8698,270.1922,270.4584,270.6854,270.9897,271.2459,271.4317,271.72,272.0013,272.2845,272.5768,272.853,273.1403,273.4305,273.759,274.0192,274.2994,274.6168,274.8257,275.0889,275.322,275.5068,275.7549,276.018,276.2762,276.4037,276.5916,276.8196,276.9873,277.1922,277.373,277.5287,277.7537,277.9446,278.1545,278.3624,278.5382,278.6949,278.9048,279.1208],"a":2.7304,"b":null,"k":-0.4079,"h":0.47694,"floor":-60},{"run":"Avo-West-1","oil":"Avo-Westfalia","t":[0,0.03001,0.06001,0.09002,0.12003,0.15004,0.18004,0.21005,0.24006,0.27006,0.30007,0.33008,0.36008,0.39009,0.4201,0.4501,0.48011,0.51012,0.54012,0.57013,0.60013,0.63014,0.66015,0.69015,0.72016,0.75017,0.78017,0.81018,0.84019,0.87019,0.9002,0.9302,0.96021,0.99022,1.02022,1.05023,1.08023,1.11024,1.14025,1.17025,1.20026,1.23026,1.26027,1.29028,1.32028,1.35029,1.38029,1.4103,1.4403,1.47031,1.50032,1.53032,1.56033,1.59033,1.62034,1.65034,1.68035,1.71036,1.74036,1.77037,1.80037,1.83038,1.86038,1.89039,1.9204,1.9504,1.98041,2.01041,2.04042,2.07042,2.10043,2.13043,2.16044,2.19045,2.22045,2.24712,2.27713,2.30713,2.33714,2.36714,2.39715,2.42715,2.45716,2.48717,2.51717,2.54718,2.57718,2.60719,2.63719,2.6672,2.6972,2.72721,2.75721,2.78722,2.81722,2.84723,2.87724,2.90724,2.93725,2.96725,2.99726,3.02726,3.05727,3.08727,3.11728,3.14728,3.17729,3.20729,3.2373,3.2673,3.29731,3.32731,3.35732,3.38732,3.41733,3.44733,3.47734,3.50734,3.53735,3.56736,3.59736,3.62737,3.65737,3.68738,3.71738,3.74739,3.77739,3.8074,3.8374,3.86741,3.89741,3.92742,3.95742,3.98743,4.01743,4.04744,4.07744,4.10745,4.13745,4.16746,4.19746,4.22747,4.25747,4.28748,4.31748,4.34749,4.37749,4.4075,4.4375,4.46751,4.49752,4.52752,4.55752,4.58753,4.61754,4.64754,4.67755,4.70755,4.73756,4.76756,4.79756,4.82757,4.85758,4.88758,4.91758,4.94759,4.9776,5.0076,5.03761,5.06761,5.09762,5.12762,5.15763,5.18763,5.21764,5.24764,5.27765,5.30765,5.33766,5.36766,5.39767,5.42767,5.45768,5.48768,5.51769,5.54769,5.5777,5.6077,5.63771,5.66771,5.69771,5.72772,5.75772,5.78773,5.81774,5.84774,5.87774,5.90775,5.93776,5.96776,5.99776,6.02777,6.05778,6.08778,6.11778,6.14779,6.17779,6.2078,6.2378,6.26781,6.29782,6.32782,6.35782,6.38783,6.41783,6.44784,6.47784,6.50785,6.53785,6.56786,6.59786,6.62787,6.65787,6.68788,6.71788,6.74456,6.77456,6.80456,6.83457,6.86458,6.89458,6.92459,6.95459,6.98459,7.0146,7.0446,7.07461,7.10461,7.13462,7.16462,7.19463,7.22463,7.25464,7.28464,7.31465,7.34465,7.37466,7.40466,7.43467,7.46467,7.49468,7.52468,7.55469,7.58469,7.6147,7.6447,7.67471,7.70471,7.73472,7.76472,7.79473,7.82473,7.85474,7.88474,7.91475,7.94475,7.97476,8.00476,8.03477,8.06477,8.09478,8.12478,8.15479,8.18479,8.2148,8.2448,8.2748,8.30481,8.33482,8.36482,8.39483,8.42483,8.45483,8.48484,8.51484,8.54485,8.57485,8.60486,8.63486,8.66487,8.69487,8.72488,8.75488,8.78489,8.81489,8.8449,8.8749,8.90491,8.93491,8.96492,8.99492,9.02493,9.05493,9.08494,9.11494,9.14495,9.17495,9.20496,9.23496,9.26497,9.29497,9.32498,9.35498,9.38499,9.41499,9.445,9.475,9.505,9.53501,9.56502,9.59502,9.62502,9.65503,9.68503,9.71504,9.74504,9.77505,9.80505,9.83506,9.86506,9.89507,9.92507,9.95508,9.98508,10.01509,10.04509,10.0751,10.1051,10.13511,10.16511,10.19512,10.22512,10.25513,10.28513,10.31514,10.34514,10.37514,10.40515,10.43516,10.46516,10.49516,10.52517,10.55517,10.58518,10.61518,10.64519,10.67519,10.7052,10.7352,10.76521,10.79521,10.82522,10.85522,10.88523,10.91523,10.94524,10.97524,11.00525,11.03525,11.06526,11.09526,11.12527,11.15527,11.18528,11.21528,11.24195,11.27196,11.30196,11.33197,11.36197,11.39198,11.42198,11.45199,11.48199,11.512,11.542,11.57201,11.60201,11.63202,11.66202,11.69202,11.72203,11.75203,11.78204,11.81204,11.84205,11.87205,11.90206,11.93206,11.96207,11.99207,12.02208,12.05208,12.08209,12.11209,12.1421,12.1721,12.20211,12.23211,12.26212,12.29212,12.32213,12.35213,12.38214,12.41214,12.44214,12.47215,12.50216,12.53216,12.56216,12.59217,12.62217,12.65218,12.68218,12.71219,12.74219,12.7722,12.8022,12.83221,12.86221,12.89222,12.92222,12.95223,12.98223,13.01224,13.04224,13.07225,13.10225,13.13226,13.16226,13.19227,13.22227,13.25228,13.28228,13.31228,13.34229,13.3723,13.4023,13.4323,13.46231,13.49231,13.52232,13.55232,13.58233,13.61233,13.64234,13.67234,13.70235,13.73235,13.76236,13.79236,13.82237,13.85237,13.88238,13.91238,13.94239,13.97239,14.0024,14.0324,14.06241,14.09241,14.12242,14.15242,14.18242,14.21243,14.24244,14.27244,14.30244,14.33245,14.36245,14.39246,14.42246,14.45247,14.48247,14.51248,14.54248,14.57249,14.60249,14.6325,14.6625,14.69251,14.72251,14.75252,14.78252,14.81253,14.84253,14.87254,14.90254,14.93255,14.96255,14.99256,15.02256,15.05257,15.08257,15.11258,15.14258,15.17258,15.20259,15.23259,15.2626,15.2926,15.32261,15.35261,15.38262,15.41262,15.44263,15.47263,15.50264,15.53264,15.56265,15.59265,15.62266,15.65266,15.68267,15.71267,15.73934,15.76935,15.79935,15.82936,15.85936,15.88937,15.91937,15.94938,15.97938,16.00939,16.03939,16.0694,16.0994,16.12941,16.15941,16.18942,16.21942,16.24943,16.27943,16.30944,16.33944,16.36944,16.39945,16.42946,16.45946,16.48946,16.51947,16.54947,16.57948,16.60948,16.63949,16.66949,16.6995,16.7295,16.75951,16.78951,16.81952,16.84952,16.87953,16.90953,16.93954,16.96954,16.99955,17.02955,17.05956,17.08956,17.11957,17.14957,17.17958,17.20958,17.23959,17.26959,17.2996,17.3296,17.3596,17.38961,17.41962,17.44962,17.47962,17.50963,17.53963,17.56964,17.59964,17.62965,17.65965,17.68966,17.71966,17.74967,17.77967,17.80968,17.83968,17.86969,17.89969,17.9297,17.9597],"y":[1.6917,1.5857,1.8259,2.4982,3.0634,3.4208,3.6549,3.8154,3.9194,4.0123,4.0829,4.1546,4.2051,4.2666,4.3211,4.3706,4.4231,4.4725,4.518,4.5614,4.6098,4.6542,4.6997,4.7451,4.7865,4.8278,4.8733,4.9126,4.952,4.9924,5.0317,5.0701,5.1145,5.1519,5.1963,5.2346,5.2689,5.3083,5.3487,5.385,5.4244,5.4648,5.5021,5.5445,5.5798,5.6192,5.6535,5.6919,5.7323,5.7736,5.811,5.8443,5.8806,5.9261,5.9594,5.9977,6.0351,6.0775,6.1158,6.1511,6.1925,6.2329,6.2713,6.3076,6.3449,6.3823,6.4207,6.463,6.4994,6.5377,6.5801,6.6185,6.6599,6.6952,6.7366,6.7679,6.8083,6.8527,6.887,6.9314,6.9698,7.0121,7.0485,7.0929,7.1363,7.1777,7.2201,7.2665,7.3069,7.3503,7.3937,7.4401,7.4876,7.529,7.5744,7.6208,7.6723,7.7258,7.7672,7.8217,7.8752,7.9277,7.9852,8.0387,8.0993,8.1568,8.2143,8.2789,8.3425,8.4061,8.4636,8.5353,8.605,8.6685,8.7432,8.8129,8.8815,8.9613,9.0309,9.1177,9.1944,9.2722,9.3569,9.4397,9.5245,9.6113,9.7082,9.797,9.897,9.9898,10.0978,10.1988,10.3108,10.4208,10.5359,10.6469,10.7701,10.8962,11.0214,11.1577,11.2909,11.4302,11.5786,11.7159,11.8743,12.0308,12.1913,12.3598,12.5304,12.7131,12.8989,13.0846,13.2804,13.4813,13.6882,13.9052,14.1232,14.3604,14.5966,14.8399,15.0953,15.3517,15.6302,15.9149,16.1945,16.4943,16.7971,17.1181,17.438,17.7721,18.1123,18.4605,18.8189,19.1823,19.5608,19.9453,20.3309,20.7327,21.1415,21.5553,21.9843,22.4153,22.8564,23.2995,23.7608,24.2271,24.6955,25.181,25.6625,26.1571,26.6507,27.1634,27.6661,28.1849,28.7068,29.2276,29.7444,30.2683,30.8063,31.3473,31.9004,32.4546,33.0158,33.579,34.1342,34.7156,35.292,35.8764,36.4618,37.0564,37.6489,38.2585,38.8541,39.4597,40.0694,40.675,41.2796,41.8842,42.5,43.1207,43.7435,44.3623,44.9729,45.6008,46.2226,46.7818,47.4015,48.0213,48.64,49.2658,49.8927,50.5225,51.1564,51.7782,52.4101,53.0419,53.6627,54.2936,54.9285,55.5674,56.1972,56.8271,57.461,58.0989,58.7308,59.3697,59.9996,60.6305,61.2553,61.8811,62.5059,63.1347,63.7545,64.3692,64.9839,65.6117,66.2355,66.8503,67.468,68.0868,68.6974,69.3162,69.9228,70.5335,71.1502,71.767,72.3807,72.9923,73.598,74.2097,74.8203,75.431,76.0275,76.6301,77.2277,77.8343,78.4369,79.0335,79.63,80.2377,80.7969,81.3995,81.9879,82.5895,83.1871,83.7786,84.358,84.9535,85.549,86.1375,86.7341,87.3356,87.9281,88.4954,89.0637,89.6552,90.2507,90.8321,91.3994,91.9838,92.5602,93.1416,93.7169,94.2923,94.8616,95.4359,96.0204,96.5917,97.1731,97.7343,98.3086,98.8739,99.4411,100.0054,100.5666,101.1218,101.6769,102.2119,102.7479,103.302,103.8501,104.4043,104.9514,105.5035,106.0516,106.6007,107.1508,107.6948,108.2258,108.7507,109.2846,109.8024,110.3122,110.8371,111.3579,111.8787,112.3996,112.9194,113.4322,113.9449,114.4607,114.9705,115.4822,115.996,116.4886,116.9771,117.4808,117.9804,118.473,118.9666,119.4683,119.9669,120.4665,120.9571,121.4446,121.9231,122.4086,122.886,123.3786,123.8692,124.3486,124.8372,125.3227,125.8072,126.2977,126.7792,127.2708,127.7593,128.2418,128.7081,129.1836,129.666,130.1102,130.5775,131.063,131.4728,131.9493,132.4237,132.9001,133.3846,133.855,134.3213,134.7957,135.261,135.7203,136.1907,136.6399,137.1223,137.5725,138.0197,138.4668,138.9221,139.3712,139.8234,140.2756,140.745,141.1922,141.6444,142.0915,142.5468,142.9939,143.4421,143.8933,144.3414,144.7856,145.2256,145.6647,146.0967,146.5298,146.9688,147.3827,147.8268,148.2376,148.6666,149.0694,149.4984,149.9082,150.3261,150.7601,151.1638,151.5837,151.9542,152.3599,152.7516,153.1735,153.5631,153.9628,154.3626,154.7562,155.1519,155.5556,155.9675,156.3773,156.7881,157.1656,157.5704,157.957,158.3466,158.7443,159.145,159.5387,159.9111,160.3048,160.7045,161.1123,161.4898,161.8764,162.2751,162.6647,163.0473,163.4399,163.8326,164.2171,164.5735,164.9439,165.3275,165.6918,166.0815,166.4661,166.8385,167.2069,167.5804,167.9458,168.3031,168.6695,169.042,169.3872,169.7566,170.1271,170.5066,170.8922,171.2606,171.626,172.0035,172.3659,172.7222,173.0977,173.4701,173.8204,174.1777,174.529,174.8752,175.2214,175.5727,175.9048,176.258,176.6134,176.9525,177.2795,177.6247,177.9811,178.3263,178.6796,179.0248,179.3569,179.694,180.0372,180.3693,180.6993,181.0435,181.3605,181.6986,182.0458,182.39,182.7221,183.0411,183.351,183.673,184.0081,184.3412,184.6601,185.0033,185.3374,185.6604,185.9945,186.3095,186.6425,186.9635,187.2704,187.6065,187.9164,188.2333,188.5583,188.8864,189.1912,189.4759,189.7969,190.1128,190.4358,190.7628,191.1101,191.4442,191.7753,192.1013,192.4213,192.7544,193.0713,193.4084,193.7072,194.0171,194.329,194.6651,194.9901,195.3091,195.6341,195.9622,196.2852,196.593,196.9292,197.2411,197.563,197.8618,198.1778,198.4866,198.7965,199.1044,199.4243,199.7171,199.9936,200.2803,200.5478,200.8102,201.0919,201.3371,201.5935,201.8448,202.1224,202.402,202.6493,202.9057,203.1692,203.4286,203.6819,203.9292,204.2027,204.4622,204.7246,204.9881,205.2303,205.4867,205.7471,205.9792,206.2245,206.4638,206.7252,206.9674,207.2137,207.4399,207.6992,207.9627,208.2211,208.4512,208.7227,208.9852,209.2577,209.5141,209.7796,210.0219,210.2843,210.5235],"a":4.9783,"b":4.6657,"k":-0.98,"h":0.16217,"floor":-60},{"run":"Avocado-1","oil":"Avocado","t":[0,0.03334,0.06668,0.10002,0.13336,0.1667,0.20004,0.23338,0.26672,0.30006,0.3334,0.36674,0.40008,0.43341,0.46675,0.50009,0.53343,0.56677,0.60011,0.63345,0.66679,0.70013,0.73347,0.76681,0.80015,0.83348,0.86682,0.90016,0.9335,0.96684,1.00018,1.03352,1.06686,1.1002,1.13353,1.16687,1.20021,1.23355,1.27022,1.30356,1.3369,1.37024,1.40358,1.43692,1.47025,1.50359,1.53693,1.57027,1.60361,1.63695,1.67028,1.70362,1.73696,1.7703,1.80364,1.83698,1.87031,1.90365,1.93699,1.97033,2.00367,2.03701,2.07034,2.10368,2.13702,2.17036,2.2037,2.23704,2.27037,2.30371,2.33705,2.37039,2.40373,2.43707,2.4704,2.50374,2.53708,2.57042,2.60376,2.63709,2.67043,2.70377,2.73711,2.77045,2.80378,2.83712,2.87046,2.9038,2.93714,2.97048,3.00381,3.03715,3.07049,3.10383,3.13717,3.17051,3.20384,3.23718,3.27052,3.30386,3.3372,3.37054,3.40387,3.43721,3.47055,3.50389,3.53723,3.57057,3.6039,3.63724,3.67058,3.70392,3.73726,3.77393,3.80727,3.84061,3.87394,3.90728,3.94062,3.97396,4.0073,4.04063,4.07397,4.10731,4.14065,4.17399,4.20733,4.24066,4.274,4.30734,4.34068,4.37402,4.40736,4.44069,4.47403,4.50737,4.54071,4.57405,4.60738,4.64072,4.67406,4.7074,4.74074,4.77408,4.80741,4.84075,4.87409,4.90743,4.94077,4.97411,5.00744,5.04078,5.07412,5.10746,5.1408,5.17414,5.20747,5.24081,5.27415,5.30749,5.34083,5.37416,5.4075,5.44084,5.47418,5.50752,5.54086,5.5742,5.60753,5.64087,5.67421,5.70755,5.74089,5.77423,5.80757,5.8409,5.87424,5.90758,5.94092,5.97426,6.0076,6.04093,6.07427,6.10761,6.14095,6.17429,6.20763,6.24096,6.27764,6.31098,6.34432,6.37765,6.41099,6.44433,6.47767,6.51101,6.54435,6.57768,6.61102,6.64436,6.6777,6.71104,6.74438,6.77772,6.81105,6.84439,6.87773,6.91107,6.94441,6.97775,7.01109,7.04443,7.07776,7.1111,7.14444,7.17778,7.21112,7.24446,7.2778,7.31114,7.34447,7.37781,7.41115,7.44449,7.47783,7.51117,7.54451,7.57784,7.61118,7.64452,7.67786,7.7112,7.74454,7.77788,7.81122,7.84455,7.87789,7.91123,7.94457,7.97791,8.01125,8.04459,8.07792,8.11126,8.1446,8.17794,8.21128,8.24462,8.27796,8.3113,8.34464,8.37797,8.41131,8.44465,8.47799,8.51133,8.54467,8.57801,8.61134,8.64468,8.67802,8.71136,8.7447,8.78137,8.81471,8.84805,8.88139,8.91473,8.94807,8.9814,9.01474,9.04808,9.08142,9.11476,9.1481,9.18144,9.21478,9.24811,9.28145,9.31479,9.34813,9.38147,9.41481,9.44815,9.48148,9.51482,9.54816,9.5815,9.61484,9.64818,9.68152,9.71486,9.74819,9.78153,9.81487,9.84821,9.88155,9.91489,9.94823,9.98157,10.0149,10.04824,10.08158,10.11492,10.14826,10.1816,10.21494,10.24828,10.28161,10.31495,10.34829,10.38163,10.41497,10.44831,10.48165,10.51498,10.54832,10.58166,10.615,10.64834,10.68168,10.71502,10.74836,10.78169,10.81503,10.84837,10.88171,10.91505,10.94839,10.98173,11.01506,11.0484,11.08174,11.11508,11.14842,11.18176,11.2151,11.25177,11.28511,11.31845,11.35179,11.38512,11.41846,11.4518,11.48514,11.51848,11.55182,11.58516,11.6185,11.65183,11.68517,11.71851,11.75185,11.78519,11.81853,11.85187,11.8852,11.91854,11.95188,11.98522,12.01856,12.0519,12.08524,12.11858,12.15191,12.18525,12.21859,12.25193,12.28527,12.31861,12.35195,12.38528,12.41862,12.45196,12.4853,12.51864,12.55198,12.58532,12.61866,12.65199,12.68533,12.71867,12.75201,12.78535,12.81869,12.85203,12.88536,12.9187,12.95204,12.98538,13.01872,13.05206,13.0854,13.11873,13.15207,13.18541,13.21875,13.25209,13.28543,13.31877,13.35211,13.38544,13.41878,13.45212,13.48546,13.5188,13.55214,13.58548,13.61882,13.65215,13.68549,13.71883,13.7555,13.78884,13.82218,13.85552,13.88886,13.9222,13.95554,13.98887,14.02221,14.05555,14.08889,14.12223,14.15557,14.18891,14.22224,14.25558,14.28892,14.32226,14.3556,14.38894,14.42228,14.45562,14.48895,14.52229,14.55563,14.58897,14.62231,14.65565,14.68899,14.72232,14.75566,14.789,14.82234,14.85568,14.88902,14.92236,14.9557,14.98903,15.02237,15.05571,15.08905,15.12239,15.15573,15.18906,15.2224,15.25574,15.28908,15.32242,15.35576,15.3891,15.42244,15.45577,15.48911,15.52245,15.55579,15.58913,15.62247,15.65581,15.68914,15.72248,15.75582,15.78916,15.8225,15.85584,15.88918,15.92252,15.95585,15.98919,16.02253,16.05587,16.08921,16.12255,16.15589,16.18922,16.22256,16.25924,16.29257,16.32591,16.35925,16.39259,16.42593,16.45927,16.49261,16.52594,16.55928,16.59262,16.62596,16.6593,16.69264,16.72598,16.75931,16.79265,16.82599,16.85933,16.89267,16.92601,16.95935,16.99269,17.02602,17.05936,17.0927,17.12604,17.15938,17.19272,17.22605,17.25939,17.29273,17.32607,17.35941,17.39275,17.42609,17.45943,17.49276,17.5261,17.55944,17.59278,17.62612,17.65946,17.6928,17.72613,17.75947,17.79281,17.82615,17.85949,17.89283,17.92617,17.9595,17.99284,18.02618,18.05952,18.09286,18.1262,18.15954,18.19288,18.22621,18.25955,18.29289,18.32623,18.35957,18.39291,18.42625,18.45958,18.49292,18.52626,18.5596,18.59294,18.62628,18.65962,18.69295,18.72629,18.76297,18.7963,18.82964,18.86298,18.89632,18.92966,18.963,18.99634,19.02967,19.06301,19.09635,19.12969,19.16303,19.19637,19.22971,19.26305,19.29638,19.32972,19.36306,19.3964,19.42974,19.46308,19.49641,19.52975,19.56309,19.59643,19.62977,19.66311,19.69645,19.72979,19.76312,19.79646,19.8298,19.86314,19.89648,19.92982,19.96316,19.99649],"y":[1.3307,1.2264,1.189,1.1968,1.2077,1.2264,1.249,1.2854,1.3327,1.3966,1.4655,1.5433,1.6191,1.7086,1.7933,1.8789,1.9685,2.0531,2.1417,2.2214,2.3012,2.3829,2.4557,2.5334,2.6132,2.687,2.7628,2.8366,2.9173,2.9882,3.0659,3.1378,3.2136,3.2825,3.3553,3.4291,3.499,3.5718,3.6535,3.7234,3.7943,3.8671,3.936,4.0059,4.0767,4.1437,4.2175,4.2854,4.3543,4.4261,4.498,4.562,4.6338,4.7037,4.7687,4.8395,4.9114,4.9803,5.0482,5.121,5.187,5.2578,5.3297,5.4006,5.4665,5.5364,5.6033,5.6712,5.7411,5.808,5.875,5.9458,6.0098,6.0777,6.1486,6.2145,6.2805,6.3494,6.4173,6.4852,6.5531,6.622,6.6879,6.7627,6.8307,6.8976,6.9665,7.0374,7.1053,7.184,7.2499,7.3287,7.4045,7.4783,7.5551,7.6358,7.7066,7.7903,7.8759,7.9547,8.0442,8.1269,8.2175,8.306,8.3995,8.4891,8.5915,8.683,8.7854,8.8877,8.995,9.1043,9.2165,9.3454,9.4645,9.5875,9.7174,9.8464,9.9871,10.1298,10.2785,10.431,10.5944,10.7607,10.9369,11.118,11.3109,11.5166,11.7214,11.9418,12.1731,12.4202,12.679,12.9546,13.2361,13.5471,13.867,14.2056,14.5609,14.9369,15.3237,15.7322,16.1613,16.6032,17.0717,17.5579,18.0599,18.5727,19.1071,19.6554,20.2262,20.8079,21.4113,22.0176,22.6485,23.2902,23.9319,24.5717,25.2301,25.8955,26.5835,27.2734,27.9781,28.6957,29.425,30.1632,30.9141,31.6651,32.4328,33.2025,33.981,34.7694,35.5578,36.3669,37.173,37.9968,38.8176,39.6473,40.4712,41.3137,42.1552,43.0066,43.8589,44.7093,45.5696,46.4258,47.292,48.1571,49.1118,49.9868,50.8599,51.7447,52.6286,53.5045,54.3923,55.2772,56.1649,57.0439,57.9356,58.8293,59.72,60.6147,61.4917,62.3864,63.2722,64.1521,65.0409,65.9326,66.8184,67.7052,68.5999,69.4837,70.3715,71.2574,72.1333,73.0113,73.8607,74.7367,75.6077,76.4896,77.3666,78.2445,79.1097,79.9748,80.8429,81.713,82.587,83.4512,84.3153,85.1736,86.0309,86.8901,87.7405,88.5978,89.4531,90.3074,91.1489,92.0013,92.8448,93.6716,94.5151,95.3517,96.1942,97.0318,97.8605,98.6863,99.519,100.3379,101.1646,101.9884,102.7847,103.6026,104.4175,105.2364,106.0524,106.8614,107.6675,108.4697,109.2709,110.071,110.8634,111.6419,112.451,113.32,114.1064,114.9007,115.6852,116.4371,117.2019,117.9854,118.7511,119.5208,120.2806,121.0464,121.7954,122.5444,123.3032,124.0444,124.7865,125.5266,126.2678,126.9833,127.7146,128.4508,129.1821,129.9134,130.6339,131.3573,132.0788,132.7923,133.4852,134.186,134.8878,135.5787,136.2648,136.9685,137.6703,138.3523,139.0315,139.7165,140.4035,141.0807,141.7598,142.4429,143.1151,143.7844,144.4615,145.1249,145.7863,146.4497,147.1033,147.7637,148.4172,149.0452,149.6938,150.3237,150.9625,151.5885,152.2204,152.8355,153.4536,154.0806,154.6987,155.3148,155.9339,156.5451,157.1485,157.7656,158.3768,158.9821,159.5874,160.1918,160.802,161.3945,161.9801,162.5756,163.1651,163.8177,164.3954,164.985,165.5569,166.1376,166.7183,167.296,167.8748,168.4456,169.0244,169.5874,170.1562,170.7301,171.2979,171.8285,172.3885,172.9298,173.481,174.0273,174.5401,175.1001,175.6365,176.171,176.6956,177.2497,177.792,178.3245,178.8314,179.3373,179.8569,180.3688,180.8806,181.3993,181.9308,182.4485,182.9642,183.4731,183.9859,184.479,184.9987,185.5095,186.0193,186.5173,187.0262,187.5262,188.0242,188.5213,189.0036,189.5016,189.9986,190.4917,190.977,191.473,191.9563,192.4317,192.9061,193.3696,193.846,194.3195,194.783,195.2564,195.7328,196.1974,196.6708,197.1393,197.5871,198.0576,198.5202,198.9759,199.4238,199.8548,200.3135,200.7722,201.2338,201.6609,202.1274,202.5802,203.0261,203.4798,203.9129,204.34,204.7898,205.2367,205.6796,206.1274,206.5615,207.0152,207.4542,207.8784,208.2997,208.7347,209.154,209.591,210.0103,210.4364,210.8705,211.2632,211.6786,212.0998,212.5122,212.9394,213.3439,213.7297,214.1106,214.525,214.9453,215.3528,215.6963,216.1018,216.4896,216.9088,217.3094,217.7218,218.1106,218.5033,218.9098,219.2327,219.6165,220.0151,220.4078,220.8143,221.2258,221.6185,222.023,222.4118,222.8094,223.1972,223.582,223.9649,224.3438,224.71,225.0899,225.457,225.7867,226.1716,226.5485,226.9235,227.2926,227.6558,228.0259,228.3596,228.7257,229.08,229.459,229.828,230.1627,230.5367,230.9068,231.269,231.6361,232.0485,232.4127,232.7729,233.1164,233.4747,233.8133,234.1371,234.4678,234.8152,235.1636,235.5101,235.8556,236.2069,236.5632,236.9225,237.2778,237.6341,237.9746,238.3339,238.6784,239.0278,239.3782,239.7354,240.077,240.4254,240.763,241.0967,241.4421,241.7837,242.1154,242.4096,242.7266,243.0671,243.3909,243.7226,244.0592,244.3712,244.6891,245.0179,245.3526,245.6734,246.008,246.3545,246.6832,247.0297,247.3525,247.6439,247.9411,248.2541,248.5257,248.8318,249.1566,249.4716,249.7925,250.1133,250.3978,250.7098,251.0159,251.3358,251.6498,251.9519,252.2728,252.5474,252.8544,253.1635,253.4578,253.758,254.0651,254.3682,254.6763,254.9834,255.2885,255.5808,255.8702,256.1468,256.4548,256.7531,257.0385,257.3377,257.6408,257.9489,258.2393,258.5326,258.8397,259.1447,259.441,259.7373,260.0119,260.3081,260.6005,260.8603,261.1585,261.4508,261.7412,262.0187,262.2678,262.5601,262.8426,263.1359,263.4184,263.7176,264.0187,264.3012,264.5758,264.7412,265.0325,265.3268,265.6132,265.8829,266.1506,266.4144,266.6851,266.9282],"a":4.8448,"b":4.5876,"k":-0.9792,"h":-0.00698,"floor":-60}];
+/* ---- staged async fit: coarse pass on a thinned trace, polish the best basins on the full one.
+   The browser must stay responsive, so the loop yields between start batches. ---- */
+const YIELD = () => new Promise(r => setTimeout(r, 0));
+
+function objectiveFor(x, y, hFloor, hHi) {
+  const n = x.length, F = new Float64Array(n);
+  return (p) => {
+    const mu = p[0], sg = Math.exp(p[1]), k = p[2], h = p[3];
+    if (!isFinite(sg) || sg <= 0 || k < K_LO || k > K_HI || h < hFloor || h > hHi) return 1e12;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const v = k4_F(x[i], mu, sg, k, h);
+      if (!isFinite(v)) return 1e12;
+      F[i] = v; if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+    if (hi - lo < 1e-8) return 1e12;
+    return varproRSS(x, F, y).rss;
+  };
+}
+function finalise(x, y, par) {
+  const n = x.length, F = new Float64Array(n);
+  const [mu, lsg, k, h] = par, sg = Math.exp(lsg);
+  for (let i = 0; i < n; i++) F[i] = k4_F(x[i], mu, sg, k, h);
+  const { rss, beta } = varproRSS(x, F, y);
+  return { theta: [beta[0], beta[2], mu, sg, k, h], drift: beta[1], rss };
+}
+/* The fit is the SAME algorithm as the reference implementation: the full start grid on the
+   full trace, walking the ladder of h floors and taking the deepest floor whose best fit is
+   physical. An earlier version screened starts on a thinned copy to save time; on a handful of
+   runs that polished the wrong basin and moved the reading by up to eight parts in a thousand,
+   which is too much for a number anyone will quote. Exactness wins; the loop yields to keep the
+   page responsive. */
+async function fitStaged(x, y, onProgress) {
+  const starts = k4_starts(x, y);
+  const floors = [-60, -8, -3, -1.2, -0.5, 0];
+  let done = 0;
+  const total = floors.reduce((a, f) => a + starts.filter(s => s[3] > f).length, 0);
+  for (const flo of floors) {
+    const usable = starts.filter(s => s[3] > flo);
+    const obj = objectiveFor(x, y, flo, 4);
+    let best = null;
+    for (let i = 0; i < usable.length; i++) {
+      const a = nmd(obj, usable[i], 4, 1500);
+      const b = nmd(obj, a.par, 4, 1500);
+      const o = b.value < a.value ? b : a;
+      if (!best || o.value < best.value) best = o;
+      done++;
+      if ((i & 15) === 0) {
+        onProgress(done / total, `searching the shape plane, floor h \u2265 ${flo}`);
+        await YIELD();
+      }
+    }
+    if (!best) continue;
+    const fit = finalise(x, y, best.par);
+    fit.hFloor = flo;
+    if (isPhysical(fit, x)) return fit;
+  }
+  return null;
+}
+
+/* ---- trace intake ---- */
+function parseTrace(text) {
+  const lines = text.split(/\r?\n/);
+  const pts = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const parts = line.split(/[,;\t]+/);
+    if (parts.length < 2) continue;
+    const a = parseFloat(parts[0].replace(',', '.')), b = parseFloat(parts[1].replace(',', '.'));
+    if (!isFinite(a) || !isFinite(b)) continue;
+    pts.push([a, b]);
+  }
+  if (pts.length < 40) throw new Error(`only ${pts.length} usable rows were found; a trace needs at least 40`);
+  pts.sort((p, q) => p[0] - q[0]);
+  let t = pts.map(p => p[0]);
+  const unit = t[t.length - 1] > 500 ? 'seconds' : 'hours';
+  if (unit === 'seconds') t = t.map(v => v / 3600);
+  const t0 = t[0];
+  t = t.map(v => v - t0);
+  let x = t, y = pts.map(p => p[1]);
+  const target = 600;
+  if (x.length > target) {
+    const idx = [...new Set(Array.from({ length: target }, (_, i) => Math.round(i * (x.length - 1) / (target - 1))))];
+    x = idx.map(i => x[i]); y = idx.map(i => y[i]);
+  }
+  return { x, y, unit, nRaw: pts.length };
+}
+
+/* ---- plot ---- */
+function draw(cv, tr, fit, rd) {
+  const css = getComputedStyle(document.documentElement);
+  const C = n => css.getPropertyValue(n).trim();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = cv.clientWidth, H = Math.round(W * 0.57);
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.height = H + 'px';
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const L = 54, R = 14, T = 14, B = 40;
+  const xs = tr.x, ys = tr.y;
+  const xmax = xs[xs.length - 1];
+  let ymin = Infinity, ymax = -Infinity;
+  for (const v of ys) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; }
+  const pad = (ymax - ymin) * 0.08 || 1;
+  ymin -= pad; ymax += pad;
+  const px = v => L + (v / xmax) * (W - L - R);
+  const py = v => T + (1 - (v - ymin) / (ymax - ymin)) * (H - T - B);
+
+  g.strokeStyle = C('--line'); g.lineWidth = 1; g.font = '11px "IBM Plex Mono", monospace';
+  g.fillStyle = C('--faint');
+  const nTick = 6;
+  for (let i = 0; i <= nTick; i++) {
+    const yv = ymin + (ymax - ymin) * i / nTick, Y = py(yv);
+    g.beginPath(); g.moveTo(L, Y); g.lineTo(W - R, Y); g.stroke();
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    g.fillText(yv.toFixed(0), L - 8, Y);
+  }
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let i = 0; i <= 6; i++) {
+    const xv = xmax * i / 6;
+    g.fillText(xv.toFixed(1), px(xv), H - B + 8);
+  }
+  g.fillStyle = C('--muted'); g.textAlign = 'center';
+  g.fillText('time (h)', (L + W - R) / 2, H - 15);
+  g.save(); g.translate(14, (T + H - B) / 2); g.rotate(-Math.PI / 2);
+  g.fillText('conductivity (µS/cm)', 0, 0); g.restore();
+
+  /* measured trace */
+  g.strokeStyle = C('--line-strong'); g.lineWidth = 2.4; g.beginPath();
+  xs.forEach((v, i) => i ? g.lineTo(px(v), py(ys[i])) : g.moveTo(px(v), py(ys[i])));
+  g.stroke();
+
+  if (fit) {
+    const [g0, g1, mu, sg, k, h] = fit.theta;
+    /* baseline the tangent construction meets */
+    g.strokeStyle = C('--faint'); g.lineWidth = 1; g.setLineDash([3, 4]); g.beginPath();
+    g.moveTo(px(0), py(g0)); g.lineTo(px(xmax), py(g0 + fit.drift * xmax)); g.stroke();
+    g.setLineDash([]);
+    /* fitted response */
+    g.strokeStyle = C('--accent'); g.lineWidth = 2.2; g.beginPath();
+    for (let i = 0; i <= 400; i++) {
+      const xv = xmax * i / 400;
+      const yv = g0 + fit.drift * xv + g1 * k4_F(xv, mu, sg, k, h);
+      i ? g.lineTo(px(xv), py(yv)) : g.moveTo(px(xv), py(yv));
+    }
+    g.stroke();
+    const rule = (v, col, lab) => {
+      if (!isFinite(v) || v < 0 || v > xmax) return;
+      g.strokeStyle = col; g.lineWidth = 1.6; g.setLineDash([5, 3]);
+      g.beginPath(); g.moveTo(px(v), T); g.lineTo(px(v), H - B); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = col; g.textAlign = 'left'; g.textBaseline = 'top';
+      g.font = '600 11px "IBM Plex Mono", monospace';
+      g.fillText(lab + ' ' + v.toFixed(2) + ' h', px(v) + 5, T + 3);
+    };
+    rule(rd.b, C('--onset'), '2nd deriv');
+    rule(rd.a, C('--accent-ink'), 'tangent');
+  }
+}
+
+/* ---- controller ---- */
+const $ = id => document.getElementById(id);
+let TRACE = null, FIT = null, RD = null, BS = null, SRC = '';
+
+const fmt = (v, d = 3) => isFinite(v) ? v.toFixed(d) : '—';
+function setProgress(p, msg) { $('barFill').style.width = Math.round(p * 100) + '%'; $('status').textContent = msg; }
+
+$('btnTheme').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const next = cur ? (cur === 'dark' ? 'light' : 'dark') : (sysDark ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', next);
+  if (TRACE) draw($('plot'), TRACE, FIT, RD || {});
+});
+
+function accept(text, name) {
+  try {
+    TRACE = parseTrace(text);
+    SRC = name;
+    FIT = null; RD = null; BS = null;
+    $('srcName').textContent = `${name} · ${TRACE.nRaw} points · ${TRACE.x[TRACE.x.length-1].toFixed(2)} h`;
+    $('console').classList.remove('hidden');
+    $('btnRun').disabled = false;
+    $('btnPrint').disabled = true;
+    $('diagCard').classList.add('hidden');
+    $('caveat').classList.add('hidden');
+    $('aVal').innerHTML = '—<span class="u">h</span>'; $('aCI').textContent = '';
+    $('bVal').textContent = '—'; $('bCI').textContent = '—';
+    $('eqChip').className = 'chip info'; $('eqChip').textContent = 'not yet computed';
+    $('eqText').textContent = '';
+    draw($('plot'), TRACE, null, {});
+  } catch (e) {
+    $('console').classList.remove('hidden');
+    $('caveat').classList.remove('hidden');
+    $('caveat').innerHTML = `<strong>That file could not be read as a trace.</strong> ${e.message}. ` +
+      `Two numeric columns are needed: time in the first, conductivity in the second.`;
+  }
+}
+$('file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => accept(t, f.name));
+});
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('over');
+}));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  f.text().then(t => accept(t, f.name));
+});
+$('btnExample').addEventListener('click', () => accept(EXAMPLE, 'avocado, 120 °C (worked example)'));
+
+$('btnRun').addEventListener('click', async () => {
+  if (!TRACE) return;
+  $('btnRun').disabled = true; $('btnExample').disabled = true;
+  $('progress').classList.remove('hidden');
+  setProgress(0.02, 'fitting the response');
+  await new Promise(r => setTimeout(r, 30));
+
+  FIT = await fitStaged(TRACE.x, TRACE.y, (p, m) => setProgress(0.02 + 0.62 * p, m));
+  if (!FIT) {
+    setProgress(1, 'no admissible fit');
+    $('caveat').classList.remove('hidden');
+    $('caveat').innerHTML = '<strong>This trace does not support a fit.</strong> No shape in the ' +
+      'admissible set produced a rising response with an induction period inside the run. ' +
+      'That usually means the run was stopped before the oxidation finished.';
+    $('btnRun').disabled = false; $('btnExample').disabled = false;
+    return;
+  }
+  RD = k4_readings(FIT.theta);
+  draw($('plot'), TRACE, FIT, RD);
+
+  setProgress(0.68, 'bootstrapping intervals, 400 resamples');
+  await new Promise(r => setTimeout(r, 30));
+  BS = bootstrapReadings(TRACE.x, TRACE.y, FIT, 400, mulberry32(20260827));
+  setProgress(1, 'done');
+  render();
+  $('progress').classList.add('hidden');
+  $('btnRun').disabled = false; $('btnExample').disabled = false; $('btnPrint').disabled = false;
+});
+$('btnPrint').addEventListener('click', () => window.print());
+
+function render() {
+  const run = TRACE.x[TRACE.x.length - 1];
+  const [g0, g1, mu, sg, k, h] = FIT.theta;
+
+  if (isFinite(RD.a)) {
+    $('aVal').innerHTML = `${RD.a.toFixed(3)}<span class="u">h</span>`;
+    $('aCI').textContent = isFinite(BS.a[0])
+      ? `95% interval  ${fmt(BS.a[0])} to ${fmt(BS.a[1])} h   ·   ${BS.nA} of 400 resamples`
+      : `interval suppressed — only ${BS.nA} of 400 resamples returned a reading inside the run`;
+  } else {
+    $('aVal').innerHTML = `none<span class="u"></span>`;
+    $('aCI').textContent = 'the fitted curve admits no tangent reading inside this run';
+  }
+  $('bVal').textContent = isFinite(RD.b) ? RD.b.toFixed(3) + ' h' : 'does not exist';
+  $('bCI').textContent = isFinite(RD.b)
+    ? (isFinite(BS.b[0]) ? `${fmt(BS.b[0])} to ${fmt(BS.b[1])} h` : `suppressed (${BS.nB}/400)`)
+    : '—';
+
+  /* equivalence: is this shape on the locus where the two readings coincide? */
+  const kLoc = locusK(h);
+  const chip = $('eqChip'), txt = $('eqText');
+  if (!isFinite(RD.b)) {
+    chip.className = 'chip info';
+    chip.textContent = 'the question does not arise';
+    txt.textContent = 'Beyond a frontier in the fourth shape parameter the second-derivative reading ' +
+      'ceases to exist for the fitted curve. Only the tangent reading is available here, so there is ' +
+      'nothing to reconcile — this is a property of the shape, not a failure of the fit.';
+  } else {
+    const gap = RD.a - RD.b, rel = Math.abs(gap) / RD.a * 100;
+    if (!isFinite(kLoc)) {
+      chip.className = 'chip no'; chip.textContent = 'not reconcilable at this shape';
+      txt.textContent = `The two readings differ by ${fmt(Math.abs(gap))} h (${rel.toFixed(1)} per cent). ` +
+        `At this value of h there is no shape in the admissible set at which they coincide, so the ` +
+        `choice between the two constructions has to be made and stated.`;
+    } else {
+      const near = Math.abs(k - kLoc) < 0.06;
+      chip.className = near ? 'chip ok' : 'chip no';
+      chip.textContent = near ? 'reconcilable — this oil sits on the locus' : 'reconcilable, at a price';
+      txt.textContent = `The two readings coincide at k = ${kLoc.toFixed(3)} for this value of h; the ` +
+        `fitted shape is k = ${k.toFixed(3)}. They currently differ by ${fmt(Math.abs(gap))} h ` +
+        `(${rel.toFixed(1)} per cent). ` + (near
+          ? 'The fitted shape is close enough to that curve that a single equivalent induction period is well supported.'
+          : 'Constraining the fit to the locus would make them agree, at a cost in fit that should be quoted alongside the reading.');
+    }
+  }
+
+  const rows = [
+    ['tangent reading', isFinite(RD.a) ? RD.a.toFixed(4) + ' h' : 'none',
+      'where the steepest tangent meets the drifting baseline'],
+    ['second-derivative reading', isFinite(RD.b) ? RD.b.toFixed(4) + ' h' : 'does not exist for this shape',
+      'the inflection below the steepest point'],
+    ['shape k', k.toFixed(4), k <= -0.9790 ? 'at the lower wall of the admissible set — treat with care'
+      : 'controls the sharpness of the onset'],
+    ['shape h', h.toFixed(4), h < -0.01 ? 'negative: the region the log-logistic and 5PL models occupy'
+      : (Math.abs(h) < 0.01 ? 'zero: the generalised extreme value member' : 'controls saturation')],
+    ['location µ', mu.toFixed(4) + ' h', 'sets where the transition sits'],
+    ['scale σ', sg.toFixed(4) + ' h', 'sets how long the transition takes'],
+    ['plateau', g1.toFixed(2) + ' µS/cm', 'total conductivity rise attributed to oxidation'],
+    ['baseline drift', FIT.drift.toFixed(4) + ' µS/cm/h', 'the water trap rising through the run'],
+    ['residual sum of squares', FIT.rss.toPrecision(6), 'fit quality on ' + TRACE.x.length + ' points'],
+    ['run length', run.toFixed(3) + ' h', 'a reading may not exceed the run that measured it'],
+    ['time unit read as', TRACE.unit, TRACE.unit === 'seconds' ? 'converted to hours' : 'used as given'],
+  ];
+  $('diagBody').innerHTML = rows.map(r =>
+    `<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td style="color:var(--muted)">${r[2]}</td></tr>`).join('');
+  $('diagCard').classList.remove('hidden');
+
+  const warn = [];
+  if (k <= -0.9790) warn.push('The shape parameter k has come to rest on the lower wall of the admissible ' +
+    'set. The reading is a location functional and is insensitive to this, but the shape itself should not ' +
+    'be interpreted for this trace.');
+  if (FIT.hFloor <= -8) warn.push('This fit needed the deep end of the h range. That region is admissible ' +
+    'but sparsely visited; check the drawn curve against the trace before quoting the shape.');
+  if (isFinite(RD.a) && RD.a > 0.85 * run) warn.push('The reading falls in the last fifteen per cent of the ' +
+    'run. The instrument stopped soon after the transition, so the estimate leans on little post-transition data.');
+  if (isFinite(BS.a[0]) && (BS.a[1] - BS.a[0]) / RD.a > 0.2) warn.push('The interval is wide relative to the ' +
+    'reading — better than a fifth of it. Replicate runs would help more than a longer one.');
+  if (warn.length) {
+    $('caveat').classList.remove('hidden');
+    $('caveat').innerHTML = '<strong>Worth knowing about this trace.</strong> ' + warn.join(' ');
+  } else $('caveat').classList.add('hidden');
+}
+
+/* ---- self-test: refit the built-in archive runs and compare with the published table ---- */
+$('btnSelfTest').addEventListener('click', async () => {
+  const btn = $('btnSelfTest');
+  btn.disabled = true;
+  $('stBar').classList.remove('hidden');
+  $('stTable').classList.remove('hidden');
+  $('stBody').innerHTML = '';
+  $('stSummary').textContent = '';
+  let worstRel = 0, worstAbs = 0, fails = 0, presenceOK = 0;
+  for (let i = 0; i < SELFTEST.length; i++) {
+    const c = SELFTEST[i];
+    $('stFill').style.width = Math.round(100 * i / SELFTEST.length) + '%';
+    $('stSummary').textContent = `refitting ${c.run} (${i + 1} of ${SELFTEST.length})`;
+    await new Promise(r => setTimeout(r, 20));
+    const f = await fitStaged(c.t, c.y, () => {});
+    const rd = f ? k4_readings(f.theta) : { a: NaN, b: NaN };
+    const pubA = (c.a === null || c.a === undefined) ? NaN : c.a;
+    const pubB = (c.b === null || c.b === undefined) ? NaN : c.b;
+    const bothA = isFinite(rd.a) === isFinite(pubA);
+    const bothB = isFinite(rd.b) === isFinite(pubB);
+    if (bothB) presenceOK++;
+    const dA = (isFinite(rd.a) && isFinite(pubA)) ? Math.abs(rd.a - pubA) : NaN;
+    const relA = isFinite(dA) ? dA / pubA * 100 : NaN;
+    if (isFinite(relA)) { worstRel = Math.max(worstRel, relA); worstAbs = Math.max(worstAbs, dA); }
+    /* the published table is quoted to four decimals, so the tool cannot agree more closely than
+       half of its last digit. Pass means: the same readings exist, and any difference is under
+       half a thousandth of an hour -- under two seconds, far below anything the test resolves. */
+    const ok = bothA && bothB && (!isFinite(dA) || dA < 5e-4);
+    if (!ok) fails++;
+    const secondCell = isFinite(pubB)
+      ? (isFinite(rd.b) ? rd.b.toFixed(4) + ' h' : '<span style="color:var(--warn)">missing</span>')
+      : (isFinite(rd.b) ? '<span style="color:var(--warn)">unexpected</span>' : 'none, as published');
+    $('stBody').insertAdjacentHTML('beforeend',
+      `<tr><td>${c.run}</td>` +
+      `<td class="n">${isFinite(pubA) ? pubA.toFixed(4) : 'none'}</td>` +
+      `<td class="n">${isFinite(rd.a) ? rd.a.toFixed(4) : 'none'}</td>` +
+      `<td class="n">${isFinite(dA) ? dA.toExponential(1) : '—'}</td>` +
+      `<td class="n">${secondCell}</td>` +
+      `<td>${ok ? '<span class="chip ok">agrees</span>' : '<span class="chip no">differs</span>'}</td></tr>`);
+  }
+  $('stFill').style.width = '100%';
+  $('stBar').classList.add('hidden');
+  $('stSummary').innerHTML = fails === 0
+    ? `<strong style="color:var(--ok)">All ${SELFTEST.length} runs agree with the published table.</strong> ` +
+      `Largest difference in an induction period: ${(worstAbs*3600).toFixed(2)} seconds ` +
+      `(${worstRel.toExponential(1)} per cent of the reading). Presence or absence of the second ` +
+      `reading matched on all ${presenceOK}.`
+    : `<strong style="color:var(--warn)">${fails} of ${SELFTEST.length} runs disagree.</strong> ` +
+      `That should not happen; please tell us which browser you are using.`;
+  btn.disabled = false;
+});
+
+})();
+</script>

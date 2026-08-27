@@ -1,0 +1,104 @@
+<header class="top">
+  <div class="top-in">
+    <h1>Induction Period Reader</h1>
+    <span class="sub">Four-parameter kappa fit to a Rancimat conductivity trace</span>
+    <span class="spacer"></span>
+    <button class="noprint" id="btnTheme" title="Switch light and dark">Theme</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="intake noprint">
+    <div class="drop" id="drop">
+      <div><strong>Drop a trace here</strong>, or choose a file</div>
+      <div class="hint">Two columns: time and conductivity. Comma, semicolon or tab separated.
+        A Metrohm export with <span class="mono">Time [s]</span> and <span class="mono">Measured value</span>
+        works as it stands &mdash; seconds are detected and converted to hours.</div>
+      <input type="file" id="file" accept=".csv,.txt,.tsv" style="margin-top:10px">
+    </div>
+    <div class="side">
+      <button id="btnExample">Load a worked example</button>
+      <button class="primary" id="btnRun" disabled>Read the trace</button>
+      <button id="btnPrint" disabled>Print report</button>
+    </div>
+  </section>
+
+  <div id="progress" class="hidden noprint">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <section class="console hidden" id="console">
+    <div class="card">
+      <div class="card-h">
+        <span class="eyebrow">Trace and fitted response</span>
+        <span class="spacer" style="flex:1"></span>
+        <span class="mono" style="font-size:12px;color:var(--faint)" id="srcName"></span>
+      </div>
+      <div class="card-b"><canvas id="plot" width="1400" height="800"></canvas></div>
+    </div>
+
+    <div class="card" id="results">
+      <div class="figure">
+        <div class="label">Induction period &mdash; tangent construction</div>
+        <div class="value mono" id="aVal">&mdash;<span class="u">h</span></div>
+        <div class="ci" id="aCI"></div>
+      </div>
+      <div class="rowline">
+        <span class="k"><span class="swatch" style="background:var(--onset)"></span>Second-derivative reading</span>
+        <span class="v" id="bVal">&mdash;</span>
+      </div>
+      <div class="rowline"><span class="k">Its interval</span><span class="v" id="bCI">&mdash;</span></div>
+      <div class="verdict">
+        <span class="eyebrow">Can the two readings agree?</span>
+        <div style="margin-top:9px"><span class="chip info" id="eqChip">not yet computed</span></div>
+        <p id="eqText"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="diag card hidden" id="diagCard">
+    <div class="card-h"><span class="eyebrow">Diagnostics</span></div>
+    <div class="card-b scroll">
+      <table>
+        <thead><tr><th>Quantity</th><th>Value</th><th>What it tells you</th></tr></thead>
+        <tbody id="diagBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="note hidden" id="caveat"></div>
+
+  <section class="card noprint" id="selftestCard" style="margin-top:22px">
+    <div class="card-h">
+      <span class="eyebrow">Self-test against the published table</span>
+      <span style="flex:1"></span>
+      <button id="btnSelfTest">Run the self-test</button>
+    </div>
+    <div class="card-b">
+      <p style="margin:0 0 12px; color:var(--muted); font-size:13.5px">
+        Eight runs from the collaborating laboratory's own archive are built into this page, chosen to span the
+        awkward cases: shapes at the wall of the admissible set, shapes deep in the negative half-line,
+        runs whose second-derivative reading does not exist, and the shortest and longest induction
+        periods in the set. The tool refits each from its raw trace and compares against the value in
+        the workbook that accompanies this link. If these agree, a disagreement on your own traces is
+        a fact about the data and not about the arithmetic.
+      </p>
+      <div class="bar hidden" id="stBar"><i id="stFill"></i></div>
+      <div class="scroll"><table id="stTable" class="hidden">
+        <thead><tr><th>Run</th><th>Published (h)</th><th>This tool (h)</th><th>Difference</th><th>2nd reading</th><th></th></tr></thead>
+        <tbody id="stBody"></tbody>
+      </table></div>
+      <div id="stSummary" class="status"></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Readings are computed from the fitted curve, never by differentiating the recorded data, so noise
+    enters through the fit where it can be accounted for. Intervals are percentile intervals from a
+    residual bootstrap. Nothing is uploaded and nothing is stored: the fit runs in this browser.
+    The engine is a JavaScript port of the <span class="mono">arcstat</span> C back end, agreeing with it
+    to seven decimal places on the twenty-eight-oil archive.
+  </footer>
+</div>
